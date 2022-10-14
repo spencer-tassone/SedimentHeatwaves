@@ -402,7 +402,7 @@ colnames(sed_dat) <- x
 round(sum(is.na(sed_dat$sedtemp_central))/NROW(sed_dat),2)*100 # 2%
 round(sum(is.na(sed_dat$sedtemp_northern))/NROW(sed_dat),2)*100 # 4%
 
-### 1989-2022 Wachapreague water level wrangling
+### 1989-2022 Wachapreague water level wrangling (https://tidesandcurrents.noaa.gov/waterlevels.html?id=8631044)
 
 wl_files <- list.files("D:/School/SeagrassRecovery/Data/Wachapreague/WaterLevel",full.names=T)
 wl_list<-lapply(wl_files,read.csv)
@@ -424,7 +424,7 @@ wl_dat$waterlevel_ft <- as.numeric(wl_dat$waterlevel_ft)
 wl_dat$waterlevel_m <- round((wl_dat$waterlevel_ft * 0.3048),2)
 rm(list=setdiff(ls(), c("sed_dat","wl_dat")))
 
-### 1994-2022 Wachapreague water temp wrangling
+### 1994-2022 Wachapreague water temp wrangling (https://tidesandcurrents.noaa.gov/physocean.html?id=8631044)
 
 wt_files <- list.files("D:/School/SeagrassRecovery/Data/Wachapreague/WaterTemp",full.names=T)
 wt_list<-lapply(wt_files,read.csv)
