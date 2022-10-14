@@ -10,23 +10,47 @@ dev.off()
 
 setwd("D:/School/SeagrassRecovery/Data/HOBO/Temperature")
 
-dat <- fread('All_Sediment_Temperature.csv')
-dat$date <- as.Date(dat$date, '%m/%d/%Y')
-dat_hourly <- dat[dat$Minute == 0,]
-dat_hourly$Central <- rowMeans(subset(dat_hourly, select = c(SedTemp_2T,SedTemp_2C)))
-dat_hourly$Central <- ifelse(is.na(dat_hourly$Central),dat_hourly$SedTemp_2T,dat_hourly$SedTemp_2C)
-dat_hourly$Central <- ifelse(is.na(dat_hourly$Central),dat_hourly$SedTemp_2C,dat_hourly$SedTemp_2T)
-dat_hourly$Northern <- rowMeans(subset(dat_hourly, select = c(SedTemp_5T,SedTemp_5C)))
-dat_hourly$Northern <- ifelse(is.na(dat_hourly$Northern),dat_hourly$SedTemp_5T,dat_hourly$SedTemp_5C)
-dat_hourly$Northern <- ifelse(is.na(dat_hourly$Northern),dat_hourly$SedTemp_5C,dat_hourly$SedTemp_5T)
+dat_temp <- read.csv('ALLTEMP.csv')
+colnames(dat_temp)[2:17] <- c("1C","1T","2C","2C_SED","2T","2T_SED","3C","3T",
+                              "4C","4T","5C","5C_SED","5T","5T_SED","6C","6T")
+dat_temp$DateTime <- as.POSIXct(dat_temp$DateTime, tz = "America/Jamaica", "%Y-%m-%d %H:%M")
 
-central_lm <- lm(SedTemp_2C~SedTemp_2T, data = dat_hourly)
-northern_lm <- lm(SedTemp_5C~SedTemp_5T, data = dat_hourly)
+# dat_temp_long <- dat_temp %>%
+#   pivot_longer(!DateTime, names_to = "Site", values_to = "Temperature_C") %>%
+#   arrange(Site) %>%
+#   mutate(Location = ifelse(Site %in% c("1C","1T","2C","2C_SED","2T","2T_SED","3C","3T"),"Central","Northern"))
+# 
+# dat_temp_long <- dat_temp_long %>%
+#   mutate(Month = month(DateTime),
+#          Day = day(DateTime),
+#          Year = year(DateTime),
+#          Hour = hour(DateTime),
+#          Minute = minute(DateTime),
+#          Date = as.Date(as.POSIXct(DateTime,tz="America/Jamaica")))
+
+dat_temp <- dat_temp %>%
+  mutate(Month = month(DateTime),
+         Day = day(DateTime),
+         Year = year(DateTime),
+         Hour = hour(DateTime),
+         Minute = minute(DateTime),
+         Date = as.Date(as.POSIXct(DateTime,tz="America/Jamaica")))
+
+dat_hourly <- dat_temp[dat_temp$Minute == 0,]
+dat_hourly$Central <- rowMeans(subset(dat_hourly, select = c("2T_SED","2C_SED")))
+dat_hourly$Central <- ifelse(is.na(dat_hourly$Central),dat_hourly$`2T_SED`,dat_hourly$`2C_SED`)
+dat_hourly$Central <- ifelse(is.na(dat_hourly$Central),dat_hourly$`2C_SED`,dat_hourly$`2T_SED`)
+dat_hourly$Northern <- rowMeans(subset(dat_hourly, select = c("5T_SED","5C_SED")))
+dat_hourly$Northern <- ifelse(is.na(dat_hourly$Northern),dat_hourly$`5T_SED`,dat_hourly$`5C_SED`)
+dat_hourly$Northern <- ifelse(is.na(dat_hourly$Northern),dat_hourly$`5C_SED`,dat_hourly$`5T_SED`)
+
+central_lm <- lm(`2C_SED`~`2T_SED`, data = dat_hourly)
+northern_lm <- lm(`5C_SED`~`5T_SED`, data = dat_hourly)
 summary(central_lm)
 summary(northern_lm)
 
 central_plot <-
-  ggplot(data = dat_hourly, aes(x = SedTemp_2T, y = SedTemp_2C)) +
+  ggplot(data = dat_hourly, aes(x = `2T_SED`, y = `2C_SED`)) +
   geom_point(alpha = 0.5) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
@@ -49,7 +73,7 @@ central_plot <-
         axis.text.y = element_text(size = 14, color = "black"))
 
 northern_plot <-
-  ggplot(data = dat_hourly, aes(x = SedTemp_5T, y = SedTemp_5C)) +
+  ggplot(data = dat_hourly, aes(x = `5T_SED`, y = `5C_SED`)) +
   geom_point(alpha = 0.5) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
@@ -73,14 +97,20 @@ northern_plot <-
 
 ### Exported as width = 900 height = 500
 central_plot + northern_plot + plot_layout(ncol = 2)
+round(min(dat_hourly$Central, na.rm = T),2) # 1.44 C
+round(min(dat_hourly$Northern, na.rm = T),2) # 1.44 C
+round(min(dat_hourly$`2C_SED`, na.rm = T),2) # 1.44 C
+round(min(dat_hourly$`2T_SED`, na.rm = T),2) # 6.57 C
+round(min(dat_hourly$`5C_SED`, na.rm = T),2) # 1.66 C
+round(min(dat_hourly$`5T_SED`, na.rm = T),2) # 1.44 C
 
-control_lm <- lm(SedTemp_5C~SedTemp_2C, data = dat_hourly)
-treatment_lm <- lm(SedTemp_5T~SedTemp_2T, data = dat_hourly)
+control_lm <- lm(`5C_SED`~`2C_SED`, data = dat_hourly)
+treatment_lm <- lm(`5T_SED`~`2T_SED`, data = dat_hourly)
 summary(control_lm)
 summary(treatment_lm)
 
 control_plot <-
-  ggplot(data = dat_hourly, aes(x = SedTemp_2C, y = SedTemp_5C)) +
+  ggplot(data = dat_hourly, aes(x = `2C_SED`, y = `5C_SED`)) +
   geom_point(alpha = 0.5) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
@@ -103,7 +133,7 @@ control_plot <-
         axis.text.y = element_text(size = 14, color = "black"))
 
 treatment_plot <-
-  ggplot(data = dat_hourly, aes(x = SedTemp_2T, y = SedTemp_5T)) +
+  ggplot(data = dat_hourly, aes(x = `2T_SED`, y = `5T_SED`)) +
   geom_point(alpha = 0.5) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
@@ -154,7 +184,7 @@ ggplot(data = dat_hourly, aes(x = Central, y = Northern)) +
         axis.text.y = element_text(size = 14, color = "black"))
 
 dat_daily <- dat_hourly %>%
-  group_by(date) %>%
+  group_by(Date) %>%
   summarise(MeanCentral = round(mean(Central, na.rm = T),2),
             MaxCentral = round(max(Central, na.rm = T),2),
             MinCentral = round(min(Central, na.rm = T),2),
@@ -167,11 +197,15 @@ dat_daily <- dat_daily %>%
          across(where(is.numeric), ~na_if(., -Inf)))
 dat_daily <- as.data.frame(dat_daily)
 dat_daily$MeanCentral[is.nan(dat_daily$MeanCentral)] <- NA
+dat_daily$MeanNorth[is.nan(dat_daily$MeanNorth)] <- NA
 dat_daily$DeltaT[is.nan(dat_daily$DeltaT)] <- NA
+max(dat_daily$DeltaT, na.rm = T)
+min(dat_daily$DeltaT, na.rm = T) # This value happens on a day with incomplete northern data creating an inflated daily mean temp which should be converted to NA
+dat_daily[671,5:8] <- NA
 
 ggplot(data = dat_daily) +
-  geom_line(aes(x = date, y = MeanCentral), color = "red", size = 1) +
-  geom_line(aes(x = date, y = MeanNorth), size = 1, alpha = 0.7) +
+  geom_line(aes(x = Date, y = MeanCentral), color = "red", size = 1) +
+  geom_line(aes(x = Date, y = MeanNorth), size = 1, alpha = 0.7) +
   # geom_ribbon(aes(x = date, y = MeanCentral,
   #               ymin = dat_daily$MinCentral, ymax = dat_daily$MaxCentral),
   #               color = "red", fill = "red", alpha = 0.1) +
@@ -179,9 +213,8 @@ ggplot(data = dat_daily) +
   #                 ymin = dat_daily$MinNorth, ymax = dat_daily$MaxNorth),
   #             color = "black", fill = "black", alpha = 0.1) +
   scale_x_date(date_breaks = "2 month",
-               date_labels = "%Y-%m") +
-  scale_y_continuous(breaks = seq(0,35,5),
-                     limits = c(0,35)) +
+               date_labels = "%b") +
+  scale_y_continuous(breaks = seq(0,35,5)) +
   labs(x = NULL,
        y = expression(paste("Daily Mean Sed. Temp. ( ", degree, "C)"))) +
   annotate("rect", fill = "black", alpha = 0.15, 
@@ -236,6 +269,14 @@ ggplot(data = dat_daily) +
            xmin = as.Date("2022-07-01", "%Y-%m-%d"),
            xmax = as.Date("2022-08-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "white", color = "black",
+           xmin = as.Date("2020-05-25", "%Y-%m-%d"),
+           xmax = as.Date("2020-09-10", "%Y-%m-%d"),
+           ymin = 32, ymax = 36) +
   annotate("segment", color = "black", size = 1,
            x = as.Date("2020-06-01", "%Y-%m-%d"),
            xend = as.Date("2020-06-20", "%Y-%m-%d"),
@@ -251,18 +292,27 @@ ggplot(data = dat_daily) +
            label = "Central",
            size = 5, fontface = 1, hjust = 0) + 
   theme_bw() +
-  theme(panel.grid = element_blank(),
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 25, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"))
+        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 14, color = "black"),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(nrow = 2)) +
+  coord_cartesian(clip = 'off', ylim = c(0, 36)) +
+  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
+  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -6, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -6, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -6, label = 2022, size = 6)
 
 ggplot(data = dat_daily) +
-  geom_line(aes(x = date, y = DeltaT)) +
-  geom_point(aes(x = date, y = DeltaT), shape = 21, fill = "white", size = 1.5) +
+  geom_line(aes(x = Date, y = DeltaT)) +
+  geom_point(aes(x = Date, y = DeltaT), shape = 21, fill = "white", size = 1.5) +
   geom_abline(slope = 0, intercept = 0, linetype = "longdash", color = "black") +
-  geom_smooth(aes(x = date, y = DeltaT), method = 'loess') +
-  scale_y_continuous(breaks = seq(-1,3.5,0.5),
-                     limits = c(-1,3.5)) +
+  # geom_smooth(aes(x = Date, y = DeltaT), method = 'loess') +
+  scale_y_continuous(breaks = seq(-2,4,0.5)) +
+  scale_x_date(date_breaks = "2 month",
+               date_labels = "%b") +
   annotate("rect", fill = "black", alpha = 0.15, 
            xmin = as.Date("2020-07-01", "%Y-%m-%d"),
            xmax = as.Date("2020-08-01", "%Y-%m-%d"),
@@ -315,27 +365,42 @@ ggplot(data = dat_daily) +
            xmin = as.Date("2022-07-01", "%Y-%m-%d"),
            xmax = as.Date("2022-08-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.5,
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "white", color = "black",
+           xmin = as.Date("2020-06-15", "%Y-%m-%d"),
+           xmax = as.Date("2021-01-10", "%Y-%m-%d"),
+           ymin = 3.45, ymax = 4.1) +
+  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 4,
            label = 'Pos. = Central > North',
            size = 5, fontface = 1, hjust = 0) +
-  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.3,
+  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.6,
            label = "Neg. = North > Central",
            size = 5, fontface = 1, hjust = 0) + 
-  scale_x_date(breaks = "2 month") +
   labs(x = NULL,
        y = expression(paste(Delta~"Sediment Temp ( ", degree, "C)"))) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 45, vjust = 1, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"))
+        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 14, color = "black"),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(nrow = 2)) +
+  coord_cartesian(clip = 'off', ylim = c(-2,4.1)) +
+  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
+  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -3, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -3, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -3, label = 2022, size = 6)
 
-sed_dat <- dat_hourly[,c(7,5,12,13)]
+sed_dat <- dat_hourly[,c(23,21,24,25)]
 x <- c("date","hour","sedtemp_central","sedtemp_northern")
 colnames(sed_dat) <- x
 
 round(sum(is.na(sed_dat$sedtemp_central))/NROW(sed_dat),2)*100 # 2%
-round(sum(is.na(sed_dat$sedtemp_northern))/NROW(sed_dat),2)*100 # 5%
+round(sum(is.na(sed_dat$sedtemp_northern))/NROW(sed_dat),2)*100 # 4%
 
 ### 1989-2022 Wachapreague water level wrangling
 
@@ -382,9 +447,9 @@ wt_dat$watertemp_c <- round(((wt_dat$watertemp_f-32)*(5/9)),2)
 rm(list=setdiff(ls(), c("sed_dat","wl_dat","wt_dat")))
 
 start <- as.Date("1989-01-01")
-end <- as.Date("2022-07-28")
+end <- as.Date("2022-10-10")
 end-start
-hours <- as.data.frame(rep(seq(0,23,1), 12262)) # add +1 to end-start
+hours <- as.data.frame(rep(seq(0,23,1), 12336)) # add +1 to end-start
 colnames(hours)[1] <- "hour"
 dates <- as.data.frame(rep(seq(start,end,by = "day"), 24))
 colnames(dates)[1] <- "date"
@@ -427,8 +492,8 @@ sed_wtemp_daily <- sed_wtemp_wlevel %>%
   summarise(dailymean_central = round(mean(sedtemp_central, na.rm = T),2),
             dailymean_northern = round(mean(sedtemp_northern, na.rm = T),2),
             dailymean_wtemp = round(mean(watertemp_c, na.rm = T),2),
-            deltaT_central = round((dailymean_central - dailymean_wtemp),2),
-            deltaT_northern = round((dailymean_northern - dailymean_wtemp),2))
+            deltaT_central = round((dailymean_central - dailymean_wtemp),2), # Wrong, should use measured Wtemp from Central
+            deltaT_northern = round((dailymean_northern - dailymean_wtemp),2)) # Wrong, should use measured Wtemp from Central
 sed_wtemp_daily$DoY <- yday(sed_wtemp_daily$date)
 
 sum(sed_wtemp_daily$deltaT_central, na.rm = T)
@@ -454,9 +519,8 @@ sed_wtemp_daily %>%
   geom_line(aes(x = date, y = deltaT_northern), color = "black", size = 1, alpha = 0.7) +
   geom_abline(slope = 0, intercept = 0, linetype = "longdash") +
   scale_x_date(date_breaks = "2 month",
-               date_labels = "%Y-%m") +
-  scale_y_continuous(breaks = seq(-3,3,1),
-                     limits = c(-3,3)) +
+               date_labels = "%b") +
+  scale_y_continuous(breaks = seq(-4,3,1)) +
   annotate("rect", fill = "black", alpha = 0.15, 
            xmin = as.Date("2020-07-01", "%Y-%m-%d"),
            xmax = as.Date("2020-08-01", "%Y-%m-%d"),
@@ -509,12 +573,24 @@ sed_wtemp_daily %>%
            xmin = as.Date("2022-07-01", "%Y-%m-%d"),
            xmax = as.Date("2022-08-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "white", color = "black",
+           xmin = as.Date("2020-05-25", "%Y-%m-%d"),
+           xmax = as.Date("2020-10-01", "%Y-%m-%d"),
+           ymin = 2.5, ymax = 3.1) +
+  annotate("rect", fill = "white", color = "black",
+           xmin = as.Date("2020-05-25", "%Y-%m-%d"),
+           xmax = as.Date("2020-12-31", "%Y-%m-%d"),
+           ymin = -3.8, ymax = -2.8) +
   annotate("segment", color = "black", size = 1,
-           x = as.Date("2020-07-01", "%Y-%m-%d"),
+           x = as.Date("2020-06-25", "%Y-%m-%d"),
            xend = as.Date("2020-07-15", "%Y-%m-%d"),
            y = 2.65, yend = 2.65) +
   annotate("segment", color = "red", size = 1,
-           x = as.Date("2020-07-01", "%Y-%m-%d"),
+           x = as.Date("2020-06-25", "%Y-%m-%d"),
            xend = as.Date("2020-07-15", "%Y-%m-%d"),
            y = 3, yend = 3) +
   annotate("text", x = as.Date("2020-07-20", "%Y-%m-%d"), y = 2.65,
@@ -523,19 +599,27 @@ sed_wtemp_daily %>%
   annotate("text", x = as.Date("2020-07-20", "%Y-%m-%d"), y = 3,
            label = "Central",
            size = 5, fontface = 1, hjust = 0) + 
-  annotate("text", x = as.Date("2021-04-01", "%Y-%m-%d"), y = 3.0,
+  annotate("text", x = as.Date("2020-06-25", "%Y-%m-%d"), y = -3.0,
            label = 'Pos. = Stemp > Wtemp',
            size = 5, fontface = 1, hjust = 0) +
-  annotate("text", x = as.Date("2021-04-01", "%Y-%m-%d"), y = 2.65,
+  annotate("text", x = as.Date("2020-06-25", "%Y-%m-%d"), y = -3.5,
            label = "Neg. = Wtemp > Stemp",
            size = 5, fontface = 1, hjust = 0) +
   labs(x = NULL,
        y = expression(paste("Daily Mean"~Delta~"Sediment-Water Temp ( ", degree, "C)"))) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
+  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
+        panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 25, vjust = 1, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"))
+        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 14, color = "black"),
+        panel.border = element_blank()) +
+  guides(fill = guide_legend(nrow = 2)) +
+  coord_cartesian(clip = 'off', ylim = c(-4, 3.1)) +
+  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
+  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -5.1, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -5.1, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -5.1, label = 2022, size = 6)
 
 ### Multiple linear regression to predict long-term sediment temperature
 set.seed(3456)
@@ -681,7 +765,7 @@ central_timeseries <-
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 25, hjust = 1),
+        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
         axis.text.y = element_text(size = 14, color = "black"))
 
 northern_timeseries  <-
@@ -752,7 +836,7 @@ northern_timeseries  <-
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 25, hjust = 1),
+        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
         axis.text.y = element_text(size = 14, color = "black"))
 
 central_timeseries + northern_timeseries + plot_layout(ncol = 2)
@@ -780,6 +864,12 @@ water_longterm_daily$Station <- "water"
 all_daily_data <- rbind(central_longterm_daily,
                         northern_longterm_daily,
                         water_longterm_daily)
+all_daily_data$Temp[is.nan(all_daily_data$Temp)] <- NA
+missing <- all_daily_data %>%
+  mutate(Year = year(date)) %>%
+  group_by(Year,Station) %>%
+  summarise(DaysPerYear = sum(!is.na(Temp)))
+View(missing)
 
 library(heatwaveR)
 
@@ -808,7 +898,6 @@ hw_table_obs <- saveDat_Temp %>%
   group_by(Station) %>%
   summarise(Total_Obs_HW = max(event_no))
 hw_table_obs
-
 saveCat_Temp_water <- saveCat_Temp[saveCat_Temp$Station == "water",]
 saveCat_Temp_central <- saveCat_Temp[saveCat_Temp$Station == "central",]
 saveCat_Temp_northern <- saveCat_Temp[saveCat_Temp$Station == "northern",]
@@ -819,9 +908,9 @@ dat_water <- saveCat_Temp_water %>% count(category, Year, sort = TRUE)
 dat_central <- saveCat_Temp_central %>% count(category, Year, sort = TRUE)
 dat_northern <- saveCat_Temp_northern %>% count(category, Year, sort = TRUE)
 
-fillout_year <- rep(seq(from = 1994, to = 2021, by = 1), 4)
+fillout_year <- rep(seq(from = 1994, to = 2022, by = 1), 4) # 4 heatwave categories
 fillout_year <- sort(fillout_year)
-fillout_cat <- rep(c("I Moderate", "II Strong", "III Severe", "IV Extreme"), 28)
+fillout_cat <- rep(c("I Moderate", "II Strong", "III Severe", "IV Extreme"), 29) # 29 year time series
 fillout <- cbind(fillout_year,fillout_cat)
 fillout <- as.data.frame(fillout)
 names(fillout)[1] <- "Year"
@@ -834,13 +923,36 @@ water_fill$n[is.na(water_fill$n)] <- 0
 central_fill$n[is.na(central_fill$n)] <- 0
 northern_fill$n[is.na(northern_fill$n)] <- 0
 
-water_sum_cat <- saveCat_Temp_water %>% group_by(Year, category) %>% summarise(TotalDuration = sum(duration))
-central_sum_cat <- saveCat_Temp_central %>% group_by(Year, category) %>% summarise(TotalDuration = sum(duration))
-northern_sum_cat <- saveCat_Temp_northern %>% group_by(Year, category) %>% summarise(TotalDuration = sum(duration))
+water_sum_cat <- saveCat_Temp_water %>%
+  group_by(Year, category) %>%
+  summarise(TotalDuration = sum(duration))
+central_sum_cat <- saveCat_Temp_central %>%
+  group_by(Year, category) %>%
+  summarise(TotalDuration = sum(duration))
+northern_sum_cat <- saveCat_Temp_northern %>%
+  group_by(Year, category) %>%
+  summarise(TotalDuration = sum(duration))
 
-water_sum <- saveCat_Temp_water %>% group_by(Year) %>% summarise(TotalDuration = sum(duration))
-central_sum <- saveCat_Temp_central %>% group_by(Year) %>% summarise(TotalDuration = sum(duration))
-northern_sum <- saveCat_Temp_northern %>% group_by(Year) %>% summarise(TotalDuration = sum(duration))
+water_sum <- saveCat_Temp_water %>%
+  group_by(Year) %>%
+  summarise(TotalDuration = sum(duration))
+central_sum <- saveCat_Temp_central %>%
+  group_by(Year) %>%
+  summarise(TotalDuration = sum(duration))
+northern_sum <- saveCat_Temp_northern %>%
+  group_by(Year) %>%
+  summarise(TotalDuration = sum(duration))
+fillout_sum <- as.data.frame(seq(1994,2022,1))
+colnames(fillout_sum)[1] <- "Year"
+water_sum <- merge(water_sum, fillout_sum, by = "Year", all = TRUE)
+central_sum <- merge(central_sum, fillout_sum, by = "Year", all = TRUE)
+northern_sum <- merge(northern_sum, fillout_sum, by = "Year", all = TRUE)
+water_sum[is.na(water_sum)] <- 0
+central_sum[is.na(central_sum)] <- 0
+northern_sum[is.na(northern_sum)] <- 0
+water_sum[c(13:14,24),2] <- NA # years with no data should be NA not 0 (years 2006,2007,2017)
+central_sum[c(13:14,24),2] <- NA # years with no data should be NA not 0 (years 2006,2007,2017)
+northern_sum[c(13:14,24),2] <- NA # years with no data should be NA not 0 (years 2006,2007,2017)
 
 saveDat_Temp %>%
   group_by(Station) %>%
@@ -861,12 +973,20 @@ figA <- ggplot(data = water_fill) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
   xlab("Year") +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
   annotate("text", x = 1994, y = 8, label = "a)", size = 6) +
   ylab("Number of MHW Events") +
   guides(fill=guide_legend(title="Category")) +
+  annotate("text", x = c(2006.5,2017), y = c(0.5,6.5),
+           label = "NA",
+           size = 5, fontface = 1, hjust = 0.5) +
+  geom_segment(aes(x = 2017,
+                   y = 6,
+                   xend = 2017,
+                   yend = 2),
+               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -885,11 +1005,19 @@ figB <- ggplot(data = central_fill) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
   annotate("text", x = 1994, y = 8, label = "b)", size = 6) +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
   ylab("Number of SHW Events - Central") +
   guides(fill=guide_legend(title="Category")) +
+  annotate("text", x = c(2006.5,2017), y = c(0.5,6.5),
+           label = "NA",
+           size = 5, fontface = 1, hjust = 0.5) +
+  geom_segment(aes(x = 2017,
+                   y = 6,
+                   xend = 2017,
+                   yend = 3),
+               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -906,11 +1034,19 @@ figC <- ggplot(data = northern_fill) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
   annotate("text", x = 1994, y = 8, label = "c)", size = 6) +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
   ylab("Number of SHW Events - Northern") +
   guides(fill=guide_legend(title="Category")) +
+  annotate("text", x = c(2006.5,2017), y = c(0.5,6.5),
+           label = "NA",
+           size = 5, fontface = 1, hjust = 0.5) +
+  geom_segment(aes(x = 2017,
+                   y = 6,
+                   xend = 2017,
+                   yend = 2),
+               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -926,18 +1062,17 @@ figC <- ggplot(data = northern_fill) +
 figD <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 80, label = "(d", size = 6, hjust = 0) +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
-  scale_y_continuous(breaks = seq(0, 80, 10),
-                     limits = c(0,80)) +
+  annotate("text", x = 2017, y = 60, label = "(d", size = 6, hjust = 0) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
+  scale_y_continuous(breaks = seq(0, 65, 10),
+                     limits = c(0,65)) +
   ylab("Total MHW Days") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.01,
            p.accuracy = 0.001,
-           label.x = 1995, label.y = 80, size = 4) +
+           label.x = 1995, label.y = 60, size = 4) +
   stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1995, label.y = 75, size = 4) +
-  # annotate("text", x = 2019.5, y = 690, label = "(d", size = 6) +
+                        label.x = 1995, label.y = 50, size = 4) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -951,18 +1086,17 @@ figD <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
 figE <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 80, label = "(e", size = 6, hjust = 0) +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
-  scale_y_continuous(breaks = seq(0, 80, 10),
-                     limits = c(0,80)) +
+  annotate("text", x = 2017, y = 60, label = "(e", size = 6, hjust = 0) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
+  scale_y_continuous(breaks = seq(0, 65, 10),
+                     limits = c(0,65)) +
   ylab("Total SHW Days - Central") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.01,
            p.accuracy = 0.001,
-           label.x = 1995, label.y = 80, size = 4) +
+           label.x = 1995, label.y = 60, size = 4) +
   stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1995, label.y = 75, size = 4) +
-  # annotate("text", x = 2019.5, y = 690, label = "(d", size = 6) +
+                        label.x = 1995, label.y = 50, size = 4) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -976,18 +1110,17 @@ figE <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
 figF <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 80, label = "(f", size = 6, hjust = 0) +
-  scale_x_continuous(breaks = seq(1994, 2021, 5)) +
-  scale_y_continuous(breaks = seq(0, 80, 10),
-                     limits = c(0,80)) +
+  annotate("text", x = 2017, y = 60, label = "(f", size = 6, hjust = 0) +
+  scale_x_continuous(breaks = seq(1994, 2022, 4)) +
+  scale_y_continuous(breaks = seq(0, 65, 10),
+                     limits = c(0,65)) +
   ylab("Total SHW Days - Northern") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.01,
            p.accuracy = 0.001,
-           label.x = 1995, label.y = 80, size = 4) +
+           label.x = 1995, label.y = 60, size = 4) +
   stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1995, label.y = 75, size = 4) +
-  # annotate("text", x = 2019.5, y = 690, label = "(d", size = 6) +
+                        label.x = 1995, label.y = 50, size = 4) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -996,3 +1129,12 @@ figF <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
         axis.text.y = element_text(size = 16, color = "black"))
 
 figA + figD + figB + figE + figC + figF + plot_layout(ncol = 2, nrow = 3)
+
+library(Kendall)
+library(trend)
+ts = ts(data = water_sum[, 2],
+        frequency = 1,
+        start = 1,
+        end = 29)
+MannKendall(ts)
+ss$estimates
