@@ -189,16 +189,25 @@ ggplot(data = dat_hourly, aes(x = central_sedtemp, y = northern_sedtemp)) +
         axis.text.x = element_text(size = 14, color = "black"),
         axis.text.y = element_text(size = 14, color = "black"))
 
-# Daily mean sediment temperature from central and northern locations
-# width = 1000 height = 700
-ggplot(data = dat_daily) +
-  geom_line(aes(x = Date, y = MeanCentral_sedtemp), color = "red", size = 1) +
-  geom_line(aes(x = Date, y = MeanNorth_sedtemp), size = 1, alpha = 0.7) +
+# Hourly mean sediment temperature from central and northern locations
+round(max(dat_hourly$central_sedtemp, na.rm = T),1) # 32.1 oC
+round(max(dat_hourly$northern_sedtemp, na.rm = T),1) # 31.6 oC
+round(min(dat_hourly$central_sedtemp, na.rm = T),1) # 1.4 oC
+round(min(dat_hourly$northern_sedtemp, na.rm = T),1) # 1.5 oC
+round(max(dat_hourly$central_sedtemp, na.rm = T),1) - round(min(dat_hourly$central_sedtemp, na.rm = T),1) # 30.7 oC
+round(max(dat_hourly$northern_sedtemp, na.rm = T),1) - round(min(dat_hourly$northern_sedtemp, na.rm = T),1) # 30.1 oC
+
+Fig1a <- ggplot(data = dat_hourly) +
+  geom_line(aes(x = Date, y = central_sedtemp), color = "red", size = 1) +
+  geom_line(aes(x = Date, y = northern_sedtemp), size = 1, alpha = 0.7) +
   scale_x_date(date_breaks = "2 month",
-               date_labels = "%b") +
-  scale_y_continuous(breaks = seq(0,35,5)) +
+               date_labels = "%b",
+               limits = as.Date(c('2020-06-01','2022-11-01')),
+               expand = c(0, 0)) +
+  scale_y_continuous(breaks = seq(0,30,5),
+                     limits = c(0,33)) +
   labs(x = NULL,
-       y = expression(paste("Daily Mean Sediment Temp. (  ", degree, "C)"))) +
+       y = expression(paste("Hourly Sediment Temperature (  ", degree, "C)"))) +
   annotate("rect", fill = "black", alpha = 0.15, 
            xmin = as.Date("2020-07-01", "%Y-%m-%d"),
            xmax = as.Date("2020-08-01", "%Y-%m-%d"),
@@ -256,36 +265,134 @@ ggplot(data = dat_daily) +
            xmax = as.Date("2022-10-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
   annotate("rect", fill = "white", color = "black",
-           xmin = as.Date("2020-05-25", "%Y-%m-%d"),
-           xmax = as.Date("2020-09-10", "%Y-%m-%d"),
-           ymin = 32, ymax = 36) +
+           xmin = as.Date("2020-06-25", "%Y-%m-%d"),
+           xmax = as.Date("2020-10-25", "%Y-%m-%d"),
+           ymin = 1.85, ymax = 6) +
   annotate("segment", color = "black", size = 1,
-           x = as.Date("2020-06-01", "%Y-%m-%d"),
-           xend = as.Date("2020-06-20", "%Y-%m-%d"),
-           y = 35, yend = 35) +
+           x = as.Date("2020-07-05", "%Y-%m-%d"),
+           xend = as.Date("2020-07-25", "%Y-%m-%d"),
+           y = 5, yend = 5) +
   annotate("segment", color = "red", size = 1,
-           x = as.Date("2020-06-01", "%Y-%m-%d"),
-           xend = as.Date("2020-06-20", "%Y-%m-%d"),
-           y = 33, yend = 33) +
-  annotate("text", x = as.Date("2020-06-25", "%Y-%m-%d"), y = 35,
+           x = as.Date("2020-07-05", "%Y-%m-%d"),
+           xend = as.Date("2020-07-25", "%Y-%m-%d"),
+           y = 3, yend = 3) +
+  annotate("text", x = as.Date("2020-07-30", "%Y-%m-%d"), y = 5,
            label = 'Northern',
            size = 5, fontface = 1, hjust = 0) +
-  annotate("text", x = as.Date("2020-06-25", "%Y-%m-%d"), y = 33.1,
+  annotate("text", x = as.Date("2020-07-30", "%Y-%m-%d"), y = 3.1,
            label = "Central",
            size = 5, fontface = 1, hjust = 0) + 
+  annotate("text", x = as.Date("2022-10-02", "%Y-%m-%d"), y = 32,
+           label = "(a",
+           size = 6, fontface = 1, hjust = 0) + 
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "white"),
+        axis.text.y = element_text(size = 16, color = "black"))
+
+# Difference in daily sediment temperature between central and northern locations
+# width = 1000 height = 700
+max(dat_daily$DeltaT_sedtemp, na.rm = T) # 4.1 C
+abs(min(dat_daily$DeltaT_sedtemp, na.rm = T)) # 1.1 C
+
+Fig1b <- ggplot(data = dat_daily) +
+  geom_smooth(aes(x = Date, y = DeltaT_sedtemp), method = 'loess', span = 0.4, color = 'black', se = F) +
+  # geom_line(aes(x = Date, y = DeltaT_sedtemp)) +
+  geom_point(aes(x = Date, y = DeltaT_sedtemp), shape = 21, fill = "white", size = 2) +
+  geom_abline(slope = 0, intercept = 0, linetype = "longdash", color = "black") +
+  scale_y_continuous(breaks = seq(-1,4,0.5)) +
+  scale_x_date(date_breaks = "2 month",
+               date_labels = "%b",
+               limits = as.Date(c('2020-06-01','2022-11-01')),
+               expand = c(0, 0)) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2020-07-01", "%Y-%m-%d"),
+           xmax = as.Date("2020-08-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2020-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2020-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2020-11-01", "%Y-%m-%d"),
+           xmax = as.Date("2020-12-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-01-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-02-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-03-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-04-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-05-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-06-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-07-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-08-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2021-11-01", "%Y-%m-%d"),
+           xmax = as.Date("2021-12-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-01-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-02-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-03-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-04-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-05-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-06-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-07-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-08-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "black", alpha = 0.15, 
+           xmin = as.Date("2022-09-01", "%Y-%m-%d"),
+           xmax = as.Date("2022-10-01", "%Y-%m-%d"),
+           ymin = -Inf, ymax = Inf) +
+  annotate("rect", fill = "white", color = "black",
+           xmin = as.Date("2020-06-15", "%Y-%m-%d"),
+           xmax = as.Date("2021-02-05", "%Y-%m-%d"),
+           ymin = 3.4, ymax = 4.2) +
+  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 4,
+           label = 'Pos. = Central > North',
+           size = 5, fontface = 1, hjust = 0) +
+  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.6,
+           label = "Neg. = North > Central",
+           size = 5, fontface = 1, hjust = 0) + 
+  annotate("text", x = as.Date("2022-10-02", "%Y-%m-%d"), y = 4,
+           label = "(b",
+           size = 6, fontface = 1, hjust = 0) +
+  labs(x = NULL,
+       y = expression(paste(Delta~"Daily Mean Sediment Temperature (  ",  degree, "C)"))) +
   theme_bw() +
   theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
         panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"),
+        axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 16, color = "black"),
         panel.border = element_blank()) +
   guides(fill = guide_legend(nrow = 2)) +
-  coord_cartesian(clip = 'off', ylim = c(0, 36)) +
+  coord_cartesian(clip = 'off', ylim = c(-1,4.1)) +
   annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -6, label = 2020, size = 6) +
-  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -6, label = 2021, size = 6) +
-  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -6, label = 2022, size = 6)
+  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -2.1, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -2.1, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -2.1, label = 2022, size = 6)
+
+# width = 900 height = 1000
+Fig1a + Fig1b + plot_layout(ncol = 1)
 
 # Daily mean water and sediment temperature from central location
 # width = 1000 height = 700
@@ -483,103 +590,11 @@ ggplot(data = dat_daily) +
   annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -6, label = 2021, size = 6) +
   annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -6, label = 2022, size = 6)
 
-# Difference in daily sediment temperature between central and northern locations
-# width = 1000 height = 700
-ggplot(data = dat_daily) +
-  geom_line(aes(x = Date, y = DeltaT_sedtemp)) +
-  geom_point(aes(x = Date, y = DeltaT_sedtemp), shape = 21, fill = "white", size = 1.5) +
-  geom_abline(slope = 0, intercept = 0, linetype = "longdash", color = "black") +
-  # geom_smooth(aes(x = Date, y = DeltaT), method = 'loess') +
-  scale_y_continuous(breaks = seq(-2,4,0.5)) +
-  scale_x_date(date_breaks = "2 month",
-               date_labels = "%b") +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2020-07-01", "%Y-%m-%d"),
-           xmax = as.Date("2020-08-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2020-09-01", "%Y-%m-%d"),
-           xmax = as.Date("2020-10-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2020-11-01", "%Y-%m-%d"),
-           xmax = as.Date("2020-12-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-01-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-02-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-03-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-04-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-05-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-06-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-07-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-08-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-09-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-10-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2021-11-01", "%Y-%m-%d"),
-           xmax = as.Date("2021-12-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2022-01-01", "%Y-%m-%d"),
-           xmax = as.Date("2022-02-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2022-03-01", "%Y-%m-%d"),
-           xmax = as.Date("2022-04-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2022-05-01", "%Y-%m-%d"),
-           xmax = as.Date("2022-06-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2022-07-01", "%Y-%m-%d"),
-           xmax = as.Date("2022-08-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "black", alpha = 0.15, 
-           xmin = as.Date("2022-09-01", "%Y-%m-%d"),
-           xmax = as.Date("2022-10-01", "%Y-%m-%d"),
-           ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "white", color = "black",
-           xmin = as.Date("2020-06-15", "%Y-%m-%d"),
-           xmax = as.Date("2021-01-25", "%Y-%m-%d"),
-           ymin = 3.45, ymax = 4.1) +
-  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 4,
-           label = 'Pos. = Central > North',
-           size = 5, fontface = 1, hjust = 0) +
-  annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.6,
-           label = "Neg. = North > Central",
-           size = 5, fontface = 1, hjust = 0) + 
-  labs(x = NULL,
-       y = expression(paste(Delta~"Sediment Temp ( ", degree, "C)"))) +
-  theme_bw() +
-  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
-        panel.grid = element_blank(),
-        text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"),
-        panel.border = element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) +
-  coord_cartesian(clip = 'off', ylim = c(-2,4.1)) +
-  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = as.Date("2020-08-15", "%Y-%m-%d"), y = -3, label = 2020, size = 6) +
-  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -3, label = 2021, size = 6) +
-  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -3, label = 2022, size = 6)
-
 # Difference in daily water temperature between central and northern locations
 # width = 1000 height = 700
 ggplot(data = dat_daily) +
   geom_line(aes(x = Date, y = DeltaT_watertemp)) +
-  geom_point(aes(x = Date, y = DeltaT_watertemp), shape = 21, fill = "white", size = 1.5) +
+  geom_point(aes(x = Date, y = DeltaT_watertemp), shape = 21, fill = "white", size = 2) +
   geom_abline(slope = 0, intercept = 0, linetype = "longdash", color = "black") +
   scale_y_continuous(breaks = seq(-2,4,0.5)) +
   scale_x_date(date_breaks = "2 month",
@@ -656,8 +671,8 @@ ggplot(data = dat_daily) +
   theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
         panel.grid = element_blank(),
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"),
+        axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(size = 16, color = "black"),
         panel.border = element_blank()) +
   guides(fill = guide_legend(nrow = 2)) +
   coord_cartesian(clip = 'off', ylim = c(-2,4.1)) +
@@ -750,13 +765,14 @@ water_level_temp <- as.data.frame(water_level_temp)
 water_level_temp$Time <- format(strptime(water_level_temp$hour, format="%H"), format = "%H:%M")
 water_level_temp$DateTime <- ymd_hm(paste(water_level_temp$date, water_level_temp$Time))
 
-ggplot(data = water_level_temp, aes(x = DateTime, y = wl_diff)) +
-  geom_line()
-
 colnames(dat_daily)[1] <- "date"
 
 dat_daily %>%
   ggplot() +
+  # geom_line(aes(x = date, y = DeltaT_sedwater_central), color = "red", size = 0.5) +
+  # geom_line(aes(x = date, y = DeltaT_sedwater_north), color = "black", size = 0.5, alpha = 0.7) +
+  # geom_point(aes(x = date, y = DeltaT_sedwater_central), shape = 21, fill = "red", size = 2) +
+  # geom_point(aes(x = date, y = DeltaT_sedwater_north), shape = 21, fill = "black", size = 2) +
   geom_line(aes(x = date, y = DeltaT_sedwater_central), color = "red", size = 1) +
   geom_line(aes(x = date, y = DeltaT_sedwater_north), color = "black", size = 1, alpha = 0.7) +
   geom_abline(slope = 0, intercept = 0, linetype = "longdash") +
@@ -893,60 +909,45 @@ Valid_lm_northern <- lm(pred_northern~northern_sedtemp, data = Valid)
 summary(Valid_lm_central) # adj. R2 = 0.98
 summary(Valid_lm_northern) # adj. R2 = 0.97
 
-central_plot <-
-  ggplot(data = Valid, aes(x = central_sedtemp, y = pred_central)) +
+cent <- Valid[,c(3,12)]
+cent <- as.data.frame(cent)
+colnames(cent)[1:2] <- c('obs_sedtemp','pred_sedtemp')
+cent$site <- 'Central'
+
+north <- Valid[,c(4,13)]
+north <- as.data.frame(north)
+colnames(north)[1:2] <- c('obs_sedtemp','pred_sedtemp')
+north$site <- 'Northern Edge'
+
+Fig3 <- rbind(cent,north)
+
+# width = 600 height = 900
+Fig3 %>%
+  mutate(across(site, factor, levels = c('Northern Edge', 'Central'))) %>%
+  ggplot(aes(x = obs_sedtemp, y = pred_sedtemp)) +
   geom_point(alpha = 0.25) +
   geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red") +
   stat_smooth(method = 'lm') +
-  scale_x_continuous(breaks = seq(0,35,5),
-                     limits = c(0,35)) +
-  scale_y_continuous(breaks = seq(0,35,5),
-                     limits = c(0,35)) +
-  xlab(expression(paste("Observed Sediment Temperature (", degree,"C)"))) +
+  scale_x_continuous(breaks = seq(0,30,5),
+                     limits = c(0,32)) +
+  scale_y_continuous(breaks = seq(0,30,5),
+                     limits = c(0,32)) +
   ylab(expression(paste("Predicted Sediment Temperature (  ", degree,"C)"))) +
-  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-           r.accuracy = 0.001,
-           p.accuracy = 0.001,
-           label.x = 1, label.y = 33, size = 5) +
-  stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1, label.y = 31, size = 5) +
-  annotate("text", x = 1, y = 35,
-           label = 'Central',
-           size = 5, fontface = 1, hjust = 0) +
-  theme_bw() +
-  theme(panel.grid = element_blank(),
-        text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black"),
-        axis.text.y = element_text(size = 14, color = "black"))
-
-northern_plot <-
-  ggplot(data = Valid, aes(x = northern_sedtemp, y = pred_northern)) +
-  geom_point(alpha = 0.25) +
-  geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red") +
-  stat_smooth(method = 'lm') +
-  scale_x_continuous(breaks = seq(0,35,5),
-                     limits = c(0,35)) +
-  scale_y_continuous(breaks = seq(0,35,5),
-                     limits = c(0,35)) +
   xlab(expression(paste("Observed Sediment Temperature (", degree,"C)"))) +
-  ylab("") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.001,
            p.accuracy = 0.001,
-           label.x = 1, label.y = 33, size = 5) +
+           label.x = 1, label.y = 29, size = 5) +
   stat_regline_equation(aes(label = ..eq.label..),
                         label.x = 1, label.y = 31, size = 5) +
-  annotate("text", x = 1, y = 35,
-           label = 'Northern',
-           size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
+  theme(panel.grid = element_blank(), 
         text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black"),
-        axis.text.y = element_text(size = 14, color = "black"))
-
-# width = 600 height = 1000
-central_plot + northern_plot + plot_layout(ncol = 2)
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"),
+        strip.background = element_rect(fill = "white"),
+        strip.text = element_text(size = 16)) +
+  facet_wrap(~site, ncol = 1, strip.position = 'right')
 
 longterm_dat <- water_level_temp[44977:nrow(water_level_temp),]
 longterm_dat$doy <- yday(longterm_dat$date)
