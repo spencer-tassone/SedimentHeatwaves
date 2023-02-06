@@ -1071,6 +1071,87 @@ saveDat_Temp %>%
             MeanInt = round(mean(intensity_max),digits = 1),
             MaxInt = round(max(intensity_max),digits = 1))
 
+# lag between pelagic HW and sediment HW ----
+
+lag_water <- saveDat_Temp %>%
+  filter(Station == 'water') %>%
+  select(date_start,date_end,Station)
+lag_northern <- saveDat_Temp %>%
+  filter(Station == 'northern') %>%
+  select(date_start,date_end,Station)
+lag_central <- saveDat_Temp %>%
+  filter(Station == 'central') %>%
+  select(date_start,date_end,Station)
+
+lag_water <- as.data.frame(lag_water)
+lag_northern <- as.data.frame(lag_northern)
+lag_central <- as.data.frame(lag_central)
+
+# Find overlap of dates
+lag_northern$Overlap <- lag_northern$date_start %in% unlist(Map(':', lag_water$date_start, lag_water$date_end))
+lag_central$Overlap <- lag_central$date_start %in% unlist(Map(':', lag_water$date_start, lag_water$date_end))
+
+# Northern edge sediment
+# Loop through rows
+for (i in 1:nrow(lag_northern)) {
+  
+  # Go through only those that overlap
+  if (lag_northern[i, "Overlap"]) {
+    
+    # Loop through all rows in other data frame
+    for (j in 1:nrow(lag_water)) {
+      
+      # Check if within range of lag_northern
+      sec_date_range <- lag_water[j, "date_start"]:lag_water[j, "date_end"]
+      if (lag_northern[i, "date_start"] %in% sec_date_range) {
+        
+        # Find absolute difference in start dates
+        lag_northern[i, "diff"] <- lag_northern[i, "date_start"] - lag_water[j, "date_start"]
+        lag_northern[i, "diff"] <- abs(lag_northern[i, "diff"])
+      }
+    }
+  }
+}
+
+# Central sediment
+# Loop through rows
+for (i in 1:nrow(lag_central)) {
+  
+  # Go through only those that overlap
+  if (lag_central[i, "Overlap"]) {
+    
+    # Loop through all rows in other data frame
+    for (j in 1:nrow(lag_water)) {
+      
+      # Check if within range of lag_central
+      sec_date_range <- lag_water[j, "date_start"]:lag_water[j, "date_end"]
+      if (lag_central[i, "date_start"] %in% sec_date_range) {
+        
+        # Find absolute difference in start dates
+        lag_central[i, "diff"] <- lag_central[i, "date_start"] - lag_water[j, "date_start"]
+        lag_central[i, "diff"] <- abs(lag_central[i, "diff"])
+      }
+    }
+  }
+}
+
+# Filter and print result
+lag_northern[lag_northern$Overlap, ]
+lag_central[lag_central$Overlap, ]
+
+summary(lag_northern$Overlap) # 53 sed HW overlapped with pelagic HW, 11 sed HW did not overlap with pelagic HW
+summary(lag_central$Overlap) # 54 sed HW overlapped with pelagic HW, 12 sed HW did not overlap with pelagic HW
+
+lag_northern %>%
+  summarise(Max_lag = max(diff, na.rm = T),
+            Min_lag = min(diff, na.rm = T),
+            Avg_lag = round(mean(diff, na.rm = T))) # max = 0, min = 0, avg = 0
+
+lag_central %>%
+  summarise(Max_lag = max(diff, na.rm = T),
+            Min_lag = min(diff, na.rm = T),
+            Avg_lag = round(mean(diff, na.rm = T))) # max = 1, min = 0, avg = 0
+
 library(forcats)
 
 # water_frequency <- water_fill %>%
@@ -1102,11 +1183,9 @@ fig5A <- ggplot(data = water_fill) +
   annotate("text", x = c(2006.5,2017), y = c(0.5,6.5),
            label = "NA",
            size = 5, fontface = 1, hjust = 0.5) +
-  geom_segment(aes(x = 2017,
-                   y = 6,
-                   xend = 2017,
-                   yend = 2),
-               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
+  geom_segment(aes(x = 2017, y = 6,
+                   xend = 2017, yend = 2),
+               arrow = ggplot2::arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1128,13 +1207,13 @@ fig5A <- ggplot(data = water_fill) +
 # round((0.11313*1994)-224.67859) # 1 event
 # round((0.11313*2022)-224.67859) # 4 events
 
-fig5B <- ggplot(data = northern_fill) +
+fig5C <- ggplot(data = northern_fill) +
   geom_col(aes(x = as.numeric(Year), y = n,
                fill = forcats::fct_rev(as_factor(category))), color = "black",
            width = 1) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
-  annotate("text", x = 1994, y = 8, label = "b)", size = 6) +
+  annotate("text", x = 1994, y = 8, label = "c)", size = 6) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
@@ -1149,7 +1228,7 @@ fig5B <- ggplot(data = northern_fill) +
                    y = 6,
                    xend = 2017,
                    yend = 2),
-               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
+               arrow = ggplot2::arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1169,13 +1248,13 @@ fig5B <- ggplot(data = northern_fill) +
 # round((0.11119*1994)-220.74448) # 1 event
 # round((0.11119*2022)-220.74448) # 4 events
 
-fig5C <- ggplot(data = central_fill) +
+fig5E <- ggplot(data = central_fill) +
   geom_col(aes(x = as.numeric(Year), y = n,
                fill = forcats::fct_rev(as_factor(category))), color = "black",
            width = 1) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
-  annotate("text", x = 1994, y = 8, label = "c)", size = 6) +
+  annotate("text", x = 1994, y = 8, label = "e)", size = 6) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
@@ -1190,7 +1269,7 @@ fig5C <- ggplot(data = central_fill) +
                    y = 6,
                    xend = 2017,
                    yend = 3),
-               arrow = arrow(length = unit(0.5, "cm"), type = "closed")) +
+               arrow = ggplot2::arrow(length = unit(0.5, "cm"), type = "closed")) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1201,14 +1280,14 @@ fig5C <- ggplot(data = central_fill) +
         legend.title = element_blank())
 
 # test <- lm(TotalDuration~Year, data = water_sum)
-# summary(test) 
+# summary(test)
 # round((0.6713 * 1994) - 1327.7352) # 11 days
 # round((0.6713 * 2022) - 1327.7352) # 30 days
 
-fig5D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
+fig5B <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 60, label = "(d", size = 6, hjust = 0) +
+  annotate("text", x = 2017, y = 60, label = "(b", size = 6, hjust = 0) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
@@ -1220,7 +1299,7 @@ fig5D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
            p.accuracy = 0.001,
            label.x = 1995, label.y = 60, size = 5) +
   annotate("text", x = 1995, y = 53,
-           label = 'y = 0.67x - 1328',
+           label = 'y = 0.6713x - 1327.7352',
            size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -1231,13 +1310,13 @@ fig5D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
 
 # test <- lm(TotalDuration~Year, data = northern_sum)
 # summary(test)
-# round((0.6674 * 1994) - 1319.6003) # 11 days
-# round((0.6674 * 2022) - 1319.6003) # 30 days
+# round((0.6702 * 1994) - 1325.1681) # 11 days
+# round((0.6702 * 2022) - 1325.1681) # 30 days
 
-fig5E <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
+fig5D <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 60, label = "(e", size = 6, hjust = 0) +
+  annotate("text", x = 2017, y = 60, label = "(d", size = 6, hjust = 0) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
@@ -1249,7 +1328,7 @@ fig5E <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
            p.accuracy = 0.001,
            label.x = 1995, label.y = 60, size = 5) +
   annotate("text", x = 1995, y = 53,
-           label = 'y = 0.66x - 1319',
+           label = 'y = 0.6702x - 1325.1681',
            size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -1260,8 +1339,8 @@ fig5E <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
 
 # test <- lm(TotalDuration~Year, data = central_sum)
 # summary(test)
-# round((0.627 * 1994) - 1238.3508) # 12 days
-# round((0.627 * 2022) - 1238.3508) # 29 days
+# round((0.6749 * 1994) - 1334.4366) # 11 days
+# round((0.6749 * 2022) - 1334.4366) # 30 days
 
 fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
@@ -1288,7 +1367,7 @@ fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
         axis.text.y = element_text(size = 16, color = "black"))
 
 # width = 1200 height = 1100
-fig5A + fig5D + fig5B + fig5E + fig5C + fig5F + plot_layout(ncol = 2, nrow = 3)
+fig5A + fig5B + fig5C + fig5D + fig5E + fig5F + plot_layout(ncol = 2, nrow = 3)
 
 # Co-occurring heatwaves in June 2015
 
@@ -1324,7 +1403,6 @@ central_clim_cat <- de_central_temp$climatology %>%
                 thresh_3x = thresh_2x + diff,
                 thresh_4x = thresh_3x + diff) %>% 
   dplyr::slice(7822:7866)
-
 
 # Set category fill colours
 fillColCat <- c(
