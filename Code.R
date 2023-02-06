@@ -1357,7 +1357,7 @@ fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
            p.accuracy = 0.001,
            label.x = 1995, label.y = 60, size = 5) +
   annotate("text", x = 1995, y = 53,
-           label = 'y = 0.62x - 1238',
+           label = '0.6749x - 1334.4366',
            size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
