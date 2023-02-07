@@ -1011,6 +1011,45 @@ saveCat_Temp_northern <- saveCat_Temp[saveCat_Temp$Station == "northern",]
 saveCat_Temp_water$Year <- year(saveCat_Temp_water$peak_date)
 saveCat_Temp_central$Year <- year(saveCat_Temp_central$peak_date)
 saveCat_Temp_northern$Year <- year(saveCat_Temp_northern$peak_date)
+
+# Top 1% most extreme heatwaves
+
+saveCat_Temp_water %>%
+  filter(rank(desc(i_max))<=7) %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(peak_date,category,i_max,duration,Year,Month,Season) %>%
+  arrange(desc(i_max))
+
+saveCat_Temp_northern %>%
+  filter(rank(desc(i_max))<=7) %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(peak_date,category,i_max,duration,Year,Month,Season) %>%
+  arrange(desc(i_max))  
+
+saveCat_Temp_central %>%
+  filter(rank(desc(i_max))<=7) %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(peak_date,category,i_max,duration,Year,Month,Season) %>%
+  arrange(desc(i_max))
+
+dat_water <- saveCat_Temp_water %>% count(category, Year, sort = TRUE)
+dat_central <- saveCat_Temp_central %>% count(category, Year, sort = TRUE)
+dat_northern <- saveCat_Temp_northern %>% count(category, Year, sort = TRUE)
 dat_water <- saveCat_Temp_water %>% count(category, Year, sort = TRUE)
 dat_central <- saveCat_Temp_central %>% count(category, Year, sort = TRUE)
 dat_northern <- saveCat_Temp_northern %>% count(category, Year, sort = TRUE)
