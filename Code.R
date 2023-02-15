@@ -5,12 +5,14 @@ library(patchwork)
 library(ggpubr)
 library(lubridate)
 library(heatwaveR)
+library(tidyr)
 
 rm(list = ls())
 dev.off()
 
 setwd("D:/School/SeagrassRecovery/Data/HOBO/Temperature")
 
+# pull in observed water and sediment temperature from SG resil experiment
 dat_temp <- read.csv('ALLTEMP.csv')
 colnames(dat_temp)[2:17] <- c("1C","1T","2C","2C_SED","2T","2T_SED","3C","3T",
                               "4C","4T","5C","5C_SED","5T","5T_SED","6C","6T")
@@ -412,12 +414,6 @@ Fig1a + Fig1b + plot_layout(ncol = 1)
 central <- dat_hourly[,c(1,24,26,31)]
 northern <- dat_hourly[,c(1,25,27,30)]
 
-# central %>%
-#   group_by(Variable) %>%
-#   summarise(max = round(max(Temperature, na.rm = T),1),
-#             min = round(min(Temperature, na.rm = T),1),
-#             range = max-min)
-
 dat_hourly %>%
   summarise(max_central_water = round(max(central_watertemp, na.rm = T),1),
             min_central_water = round(min(central_watertemp, na.rm = T),1),
@@ -784,7 +780,7 @@ water_level_temp <- water_level_temp %>%
          wl_diff = zoo::na.approx(wl_diff, maxgap = 5, na.rm = F))
 
 # how much missing data is there
-sum(is.na(water_level_temp$wl_diff)) # 34328
+sum(is.na(water_level_temp$wl_diff)) # 34348
 sum(is.na(water_level_temp$watertemp_c)) # 50374
 
 sed_wtemp_wlevel <- dat_hourly[,c(23,21,24:25)]
@@ -827,11 +823,11 @@ north <- as.data.frame(north)
 colnames(north)[1:2] <- c('obs_sedtemp','pred_sedtemp')
 north$site <- 'Northern Edge'
 
-Fig3 <- rbind(cent,north)
+Fig4 <- rbind(cent,north)
 
-# Figure 3: Linear regression between predicted and observed sediment temperature ----
+# Figure 4: Linear regression between predicted and observed sediment temperature ----
 # width = 600 height = 900
-Fig3 %>%
+Fig4 %>%
   mutate(across(site, factor, levels = c('Northern Edge', 'Central'))) %>%
   ggplot(aes(x = obs_sedtemp, y = pred_sedtemp)) +
   geom_point(alpha = 0.25) +
@@ -871,11 +867,11 @@ central$Location <- "Central"
 north$Location <- "Northern Edge"
 colnames(central)[11] <- "Temperature"
 colnames(north)[11] <- "Temperature"
-Fig4 <- rbind(central, north)
+Fig5 <- rbind(central, north)
 
-# Figure 4: Hourly modeled sediment temperature ----
+# Figure 5: Hourly modeled sediment temperature ----
 # width = 1200 height = 900
-Fig4 %>%
+Fig5 %>%
   ggplot(aes(x = date, y = Temperature)) +
   geom_line() +
   scale_x_date(date_breaks = "1 year",
@@ -884,7 +880,7 @@ Fig4 %>%
   scale_y_continuous(breaks = seq(0,32,5),
                      limits = c(0,32)) +
   labs(x = NULL,
-       y = expression(paste("Modeled Hourly Sediment Temperature (  ", degree, "C)"))) +
+       y = expression(paste("Modeled Hourly Sediment Temperature (   ", degree, "C)"))) +
   annotate("rect", fill = "black", alpha = 0.15, 
            xmin = as.Date("1995-01-01", "%Y-%m-%d"),
            xmax = as.Date("1995-12-31", "%Y-%m-%d"),
@@ -970,20 +966,93 @@ water_longterm_daily <- longterm_dat_daily[,c(1:2)]
 colnames(water_longterm_daily) <- x
 water_longterm_daily$Station <- "water"
 
-all_daily_data <- rbind(central_longterm_daily,
+# Atmospheric temperature time series ----
+setwd("D:/School/SeagrassRecovery/Data/Sediment")
+
+# download gap-filled meteorological data from the VCR @ http://www.vcrlter.virginia.edu/cgi-bin/showDataset.cgi?docid=knb-lter-vcr.337
+# knb-lter-vcr.337.1
+# Groleger, N., J. Morreale and JH. Porter. 2021. Gap-filled Meteorological Data for the Virginia Coast Reserve LTER - 1989-2021. Virginia Coast Reserve Long-Term Ecological Research Project Data Publication knb-lter-vcr.337.1 (doi:10.6073/pasta/811cfcf82679e7969856a0d33f3d4194 ).
+dat <- read.csv("VCR_DailyGapFilled_v2.csv")
+
+# isolate air temperature data from Oyster between 1994-2022
+atm_longterm_daily <- dat %>%
+  filter(STATION == "OYSM") %>%
+  mutate(date = as.Date(DATE, format = "%m/%d/%Y"),
+         Temp = as.numeric(AVG_T),
+         Station = 'air') %>%
+  filter(date >= as.Date('1994-01-01'),
+         date <= as.Date('2022-12-31')) %>%
+  select(date,Temp,Station)
+
+# create daily time series of dates between Jan 1 1994 and Dec 31 2022
+fill <- as.data.frame(matrix(nrow = NROW(seq(as.Date('1994-01-01'),
+                                             as.Date('2022-12-31'),1)),
+                             ncol = 1))
+colnames(fill)[1] <- 'date'
+fill$date <- seq(as.Date('1994-01-01'),
+                 as.Date('2022-12-31'),1)
+
+# how many days should there be in the daily time series?
+NROW(fill) # there are 10,592 days in time series
+
+# how many days are there be in the time series?
+NROW(atm_longterm_daily) # there are 10,619 days in time series = 27 'extra' days
+
+# how many days are duplicated?
+sum(duplicated(atm_longterm_daily$date), na.rm = T) # 27
+
+# which rows in the time series are duplicated?
+which(duplicated(atm_longterm_daily$date))
+
+# remove duplicated rows in time series
+atm_longterm_daily <- atm_longterm_daily[!duplicated(atm_longterm_daily$date),]
+
+# double check to see if there are any duplicates
+which(duplicated(atm_longterm_daily$date)) # 0 - all duplicates have been removed
+
+# visualize time series
+atm_longterm_daily %>%
+  ggplot(aes(x = date, y = Temp)) +
+  geom_line() +
+  labs(x = "",
+       y = "VCR Daily Mean Air Temperature (C)") +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y", expand = c(0,0)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"))
+
+# cannot add atmospheric time series to water and sediment b/c difference in HW defanition
+water_sed_daily_data <- rbind(central_longterm_daily,
                         northern_longterm_daily,
                         water_longterm_daily)
-all_daily_data$Temp[is.nan(all_daily_data$Temp)] <- NA
-missing <- all_daily_data %>%
-  mutate(Year = year(date)) %>%
-  group_by(Year,Station) %>%
-  summarise(DaysPerYear = sum(!is.na(Temp)))
-View(missing)
+water_sed_daily_data$Temp[is.nan(water_sed_daily_data$Temp)] <- NA
 
-zz <- unique(all_daily_data$Station)
+yy <- unique(atm_longterm_daily$Station)
+zz <- unique(water_sed_daily_data$Station)
 
+# Heatwave detection ----
+for(i in 1:length(yy)){
+  curDat = atm_longterm_daily[atm_longterm_daily$Station == yy[i],]
+  ts_Warm = ts2clm(curDat, x = date, y = Temp,
+                   climatologyPeriod = c(min(curDat$date), max(curDat$date)))
+  de_Warm_Temp = detect_event(ts_Warm, x = date, y = Temp, minDuration = 3, maxGap = 0)
+  cat_Warm = category(de_Warm_Temp, y = Temp, S = FALSE)
+  curEventsWarm = de_Warm_Temp$event
+  curEventsWarm$Station = yy[i]
+  curCatWarm = cat_Warm
+  curCatWarm$Station = yy[i]
+  if( i == 1){
+    saveDat_Temp_air = curEventsWarm
+    saveCat_Temp_air = curCatWarm
+  } else{
+    saveDat_Temp_air = rbind(saveDat_Temp_air, curEventsWarm)
+    saveCat_Temp_air = rbind(saveCat_Temp_air, curCatWarm)
+  }
+}
 for(i in 1:length(zz)){
-  curDat = all_daily_data[all_daily_data$Station == zz[i],]
+  curDat = water_sed_daily_data[water_sed_daily_data$Station == zz[i],]
   ts_Warm = ts2clm(curDat, x = date, y = Temp,
                    climatologyPeriod = c(min(curDat$date), max(curDat$date)))
   de_Warm_Temp = detect_event(ts_Warm, x = date, y = Temp )
@@ -1001,21 +1070,39 @@ for(i in 1:length(zz)){
   }
 }
 
-hw_table_obs <- saveDat_Temp %>%
+# now combine atmo HW output with water and sediment HW output
+saveDat_Temp <- rbind(saveDat_Temp_air,saveDat_Temp)
+
+saveDat_Temp %>%
   group_by(Station) %>%
-  summarise(Total_Obs_HW = max(event_no))
-hw_table_obs
+  summarise(Total_Obs_HW = max(event_no)) # 125 air, 66 central, 64 northern, 67 water
+
 saveCat_Temp_water <- saveCat_Temp[saveCat_Temp$Station == "water",]
 saveCat_Temp_central <- saveCat_Temp[saveCat_Temp$Station == "central",]
 saveCat_Temp_northern <- saveCat_Temp[saveCat_Temp$Station == "northern",]
+saveCat_Temp_air$Year <- year(saveCat_Temp_air$peak_date)
 saveCat_Temp_water$Year <- year(saveCat_Temp_water$peak_date)
 saveCat_Temp_central$Year <- year(saveCat_Temp_central$peak_date)
 saveCat_Temp_northern$Year <- year(saveCat_Temp_northern$peak_date)
 
-# Top 1% most extreme heatwaves
+# What percentile was the 14-day duration of the June 2015 MHW?
+quantile(saveCat_Temp_water$duration, probs = seq(.90, .99, by = .01)) # 94th percentile
+
+# Top 10% most extreme heatwaves ----
+
+saveCat_Temp_air %>%
+  filter(rank(desc(i_max)) <= round(NROW(saveCat_Temp_air)*0.1)) %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(peak_date,category,i_max,duration,Year,Month,Season) %>%
+  arrange(desc(i_max)) # 12 total - 8 in winter, 2 in spring, 2 in fall - all between Nov-March
 
 saveCat_Temp_water %>%
-  filter(rank(desc(i_max))<=7) %>%
+  filter(rank(desc(i_max)) <= round(NROW(saveCat_Temp_water)*0.1)) %>%
   mutate(Month = month(peak_date),
          Season = ifelse(Month >=12, "Winter",
                          ifelse(Month >= 9, "Fall",
@@ -1023,10 +1110,10 @@ saveCat_Temp_water %>%
                                        ifelse(Month >= 3, "Spring",
                                               ifelse(Month >=1, "Winter", NA)))))) %>%
   select(peak_date,category,i_max,duration,Year,Month,Season) %>%
-  arrange(desc(i_max))
+  arrange(desc(i_max)) # 7 total - 4 in winter, 3 in spring - all between Dec-April
 
 saveCat_Temp_northern %>%
-  filter(rank(desc(i_max))<=7) %>%
+  filter(rank(desc(i_max)) <= round(NROW(saveCat_Temp_northern)*0.1)) %>%
   mutate(Month = month(peak_date),
          Season = ifelse(Month >=12, "Winter",
                          ifelse(Month >= 9, "Fall",
@@ -1034,10 +1121,10 @@ saveCat_Temp_northern %>%
                                        ifelse(Month >= 3, "Spring",
                                               ifelse(Month >=1, "Winter", NA)))))) %>%
   select(peak_date,category,i_max,duration,Year,Month,Season) %>%
-  arrange(desc(i_max))  
+  arrange(desc(i_max)) # 6 total - 3 in winter, 3 in spring - all between Dec-April
 
 saveCat_Temp_central %>%
-  filter(rank(desc(i_max))<=7) %>%
+  filter(rank(desc(i_max)) <= round(NROW(saveCat_Temp_central)*0.1)) %>%
   mutate(Month = month(peak_date),
          Season = ifelse(Month >=12, "Winter",
                          ifelse(Month >= 9, "Fall",
@@ -1045,11 +1132,9 @@ saveCat_Temp_central %>%
                                        ifelse(Month >= 3, "Spring",
                                               ifelse(Month >=1, "Winter", NA)))))) %>%
   select(peak_date,category,i_max,duration,Year,Month,Season) %>%
-  arrange(desc(i_max))
+  arrange(desc(i_max)) # 7 total - 3 in winter, 3 in spring, 1 in fall - all between Nov-April
 
-dat_water <- saveCat_Temp_water %>% count(category, Year, sort = TRUE)
-dat_central <- saveCat_Temp_central %>% count(category, Year, sort = TRUE)
-dat_northern <- saveCat_Temp_northern %>% count(category, Year, sort = TRUE)
+dat_air <- saveCat_Temp_air %>% count(category, Year, sort = TRUE)
 dat_water <- saveCat_Temp_water %>% count(category, Year, sort = TRUE)
 dat_central <- saveCat_Temp_central %>% count(category, Year, sort = TRUE)
 dat_northern <- saveCat_Temp_northern %>% count(category, Year, sort = TRUE)
@@ -1062,13 +1147,18 @@ fillout <- as.data.frame(fillout)
 names(fillout)[1] <- "Year"
 names(fillout)[2] <- "category"
 
+air_fill <- merge(dat_air, fillout, by = c("Year","category"), all = TRUE) 
 water_fill <- merge(dat_water, fillout, by = c("Year","category"), all = TRUE)
 central_fill <- merge(dat_central, fillout, by = c("Year","category"), all = TRUE)
 northern_fill <- merge(dat_northern, fillout, by = c("Year","category"), all = TRUE)
+air_fill$n[is.na(air_fill$n)] <- 0
 water_fill$n[is.na(water_fill$n)] <- 0
 central_fill$n[is.na(central_fill$n)] <- 0
 northern_fill$n[is.na(northern_fill$n)] <- 0
 
+air_sum_cat <- saveCat_Temp_air %>%
+  group_by(Year, category) %>%
+  summarise(TotalDuration = sum(duration))
 water_sum_cat <- saveCat_Temp_water %>%
   group_by(Year, category) %>%
   summarise(TotalDuration = sum(duration))
@@ -1079,6 +1169,9 @@ northern_sum_cat <- saveCat_Temp_northern %>%
   group_by(Year, category) %>%
   summarise(TotalDuration = sum(duration))
 
+air_sum <- saveCat_Temp_air %>%
+  group_by(Year) %>%
+  summarise(TotalDuration = sum(duration))
 water_sum <- saveCat_Temp_water %>%
   group_by(Year) %>%
   summarise(TotalDuration = sum(duration))
@@ -1088,11 +1181,14 @@ central_sum <- saveCat_Temp_central %>%
 northern_sum <- saveCat_Temp_northern %>%
   group_by(Year) %>%
   summarise(TotalDuration = sum(duration))
+
 fillout_sum <- as.data.frame(seq(1994,2022,1))
 colnames(fillout_sum)[1] <- "Year"
+air_sum <- merge(air_sum, fillout_sum, by = "Year", all = TRUE)
 water_sum <- merge(water_sum, fillout_sum, by = "Year", all = TRUE)
 central_sum <- merge(central_sum, fillout_sum, by = "Year", all = TRUE)
 northern_sum <- merge(northern_sum, fillout_sum, by = "Year", all = TRUE)
+air_sum[is.na(air_sum)] <- 0
 water_sum[is.na(water_sum)] <- 0
 central_sum[is.na(central_sum)] <- 0
 northern_sum[is.na(northern_sum)] <- 0
@@ -1110,8 +1206,69 @@ saveDat_Temp %>%
             MeanInt = round(mean(intensity_max),digits = 1),
             MaxInt = round(max(intensity_max),digits = 1))
 
-# lag between pelagic HW and sediment HW ----
+# Figure 7: Total heatwaves by location and season ----
+# width = 800 height = 600
 
+saveCat_Temp$Year <- year(saveCat_Temp$peak_date)
+saveCat_Temp <- rbind(saveCat_Temp_air,saveCat_Temp)
+saveCat_Temp$Station <- stringr::str_to_title(saveCat_Temp$Station)
+saveCat_Temp$Station <- ifelse(saveCat_Temp$Station == "Northern","Edge",saveCat_Temp$Station)
+saveCat_Temp$Station <- ifelse(saveCat_Temp$Station == "Air","Atmosphere",saveCat_Temp$Station)
+
+cols <- c("Atmosphere" = "black", "Water" = "#525252", "Edge" = "#cccccc", "Central" = "white")
+saveCat_Temp %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(peak_date,category,i_max,duration,Month,Season,Station) %>%
+  group_by(Station,Season) %>%
+  summarise(Total = n()) %>%
+  ggplot(aes(x = Season, y = Total, fill = (Station), group = factor(Station, levels = c("Central","Edge","Water","Atmosphere")))) +
+  geom_bar(stat = 'identity',position = position_dodge(), color = 'black') +
+  scale_fill_manual(values = cols) +
+  labs(x = "Season", y = "Total Heatwaves") +
+  scale_y_continuous(breaks = seq(0,45,5),
+                     limits = c(0,46)) +
+  scale_x_discrete(limits=c("Spring", "Winter", "Fall", "Summer")) +
+  coord_flip() +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 16, color = "black"),
+        legend.position = c(0.85,0.8),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.background = element_blank())
+
+library(tidyverse)
+
+saveCat_Temp %>%
+  mutate(Month = month(peak_date),
+         Season = ifelse(Month >=12, "Winter",
+                         ifelse(Month >= 9, "Fall",
+                                ifelse(Month >= 6, "Summer",
+                                       ifelse(Month >= 3, "Spring",
+                                              ifelse(Month >=1, "Winter", NA)))))) %>%
+  select(Season,Station) %>%
+  group_by(Station,Season) %>%
+  summarise(Total = n()) %>%
+  pivot_wider(names_from = Station,
+              values_from = Total) %>%
+  mutate(frac_air = round((Atmosphere/sum(Atmosphere))*100,),
+         frac_water = round((Water/sum(Water))*100),
+         frac_edge = round((Edge/sum(Edge))*100),
+         frac_cent = round((Central/sum(Central))*100))
+
+# lag between atmo HW and pelagic HW, and lag between pelagic HW and sediment HW ----
+
+lag_air <- saveDat_Temp %>%
+  filter(Station == 'air') %>%
+  select(date_start,date_end,Station)
 lag_water <- saveDat_Temp %>%
   filter(Station == 'water') %>%
   select(date_start,date_end,Station)
@@ -1122,13 +1279,37 @@ lag_central <- saveDat_Temp %>%
   filter(Station == 'central') %>%
   select(date_start,date_end,Station)
 
+lag_air <- as.data.frame(lag_air)
 lag_water <- as.data.frame(lag_water)
 lag_northern <- as.data.frame(lag_northern)
 lag_central <- as.data.frame(lag_central)
 
 # Find overlap of dates
+lag_water$Overlap <- lag_water$date_start %in% unlist(Map(':', lag_air$date_start, lag_air$date_end))
 lag_northern$Overlap <- lag_northern$date_start %in% unlist(Map(':', lag_water$date_start, lag_water$date_end))
 lag_central$Overlap <- lag_central$date_start %in% unlist(Map(':', lag_water$date_start, lag_water$date_end))
+
+# Water temperature
+# Loop through rows
+for (i in 1:nrow(lag_water)) {
+  
+  # Go through only those that overlap
+  if (lag_water[i, "Overlap"]) {
+    
+    # Loop through all rows in other data frame
+    for (j in 1:nrow(lag_air)) {
+      
+      # Check if within range of lag_water
+      sec_date_range <- lag_air[j, "date_start"]:lag_air[j, "date_end"]
+      if (lag_water[i, "date_start"] %in% sec_date_range) {
+        
+        # Find absolute difference in start dates
+        lag_water[i, "diff"] <- lag_water[i, "date_start"] - lag_air[j, "date_start"]
+        lag_water[i, "diff"] <- abs(lag_water[i, "diff"])
+      }
+    }
+  }
+}
 
 # Northern edge sediment
 # Loop through rows
@@ -1175,36 +1356,37 @@ for (i in 1:nrow(lag_central)) {
 }
 
 # Filter and print result
+lag_water[lag_water$Overlap, ]
 lag_northern[lag_northern$Overlap, ]
 lag_central[lag_central$Overlap, ]
 
-summary(lag_northern$Overlap) # 53 sed HW overlapped with pelagic HW, 11 sed HW did not overlap with pelagic HW
-summary(lag_central$Overlap) # 54 sed HW overlapped with pelagic HW, 12 sed HW did not overlap with pelagic HW
+summary(lag_water$Overlap) # 22 (33%) pelagic HW overlapped with atmo HW, 45 pelagic HW did not overlap with atmo HW
+summary(lag_northern$Overlap) # 53 (79%) sed HW overlapped with pelagic HW, 11 sed HW did not overlap with pelagic HW
+summary(lag_central$Overlap) # 54 (81%) sed HW overlapped with pelagic HW, 12 sed HW did not overlap with pelagic HW
+
+lag_water %>%
+  summarise(Max_lag = max(diff, na.rm = T),
+            Min_lag = min(diff, na.rm = T),
+            Avg_lag = round(mean(diff, na.rm = T)),
+            SD_lag = round(sd(diff, na.rm = T))) # max = 4 days, min = 0 days, avg = 1 day, sd = 1 day
 
 lag_northern %>%
   summarise(Max_lag = max(diff, na.rm = T),
             Min_lag = min(diff, na.rm = T),
-            Avg_lag = round(mean(diff, na.rm = T))) # max = 0, min = 0, avg = 0
+            Avg_lag = round(mean(diff, na.rm = T)),
+            SD_lag = round(sd(diff, na.rm = T))) # max = 0 days, min = 0 days, avg = 0 days, sd = 0 days
 
 lag_central %>%
   summarise(Max_lag = max(diff, na.rm = T),
             Min_lag = min(diff, na.rm = T),
-            Avg_lag = round(mean(diff, na.rm = T))) # max = 1, min = 0, avg = 0
+            Avg_lag = round(mean(diff, na.rm = T)),
+            SD_lag = round(sd(diff, na.rm = T))) # max = 1 days, min = 0 days, avg = 0 days, sd = 0 days
 
 library(forcats)
 
-# water_frequency <- water_fill %>%
-#   group_by(Year) %>%
-#   summarise(TotalHWevents = sum(n))
-# water_frequency[c(13:14,24),2] <- NA
-# water_frequency$Year <- as.numeric(water_frequency$Year)
-# water_freq_lm <- lm(TotalHWevents~Year, data = water_frequency)
-# summary(water_freq_lm)
-# round((0.1109*1994)-220.111) # 1 event
-# round((0.1109*2022)-220.111) # 4 events
+# Figure 6: Heatwave results ----
 
-# Figure 5: Heatwave results ----
-fig5A <- ggplot(data = water_fill) +
+fig6A <- ggplot(data = air_fill) +
   geom_col(aes(x = as.numeric(Year), y = n,
                fill = forcats::fct_rev(as_factor(category))), color = "black",
            width = 1) +
@@ -1215,6 +1397,30 @@ fig5A <- ggplot(data = water_fill) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
   annotate("text", x = 1994, y = 8, label = "a)", size = 6) +
+  labs(y = expression(atop("Atmosphere",
+                           paste("Total HW Events"))),
+       x = NULL) +
+  guides(fill=guide_legend(title="Category")) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "white"),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size = 16, color = "black"),
+        legend.position = "none",
+        legend.title = element_blank())
+
+fig6C <- ggplot(data = water_fill) +
+  geom_col(aes(x = as.numeric(Year), y = n,
+               fill = forcats::fct_rev(as_factor(category))), color = "black",
+           width = 1) +
+  scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
+  # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
+  xlab("Year") +
+  scale_x_continuous(breaks = seq(1994, 2022, 2)) +
+  scale_y_continuous(breaks = seq(0,8,1),
+                     limits = c(0,8)) +
+  annotate("text", x = 1994, y = 8, label = "c)", size = 6) +
   labs(y = expression(atop("Water Column",
                            paste("Total HW Events"))),
        x = NULL) +
@@ -1231,28 +1437,18 @@ fig5A <- ggplot(data = water_fill) +
         axis.text.x = element_text(size = 16, color = "white"),
         axis.title.x = element_blank(),
         axis.text.y = element_text(size = 16, color = "black"),
-        legend.position = c(0.25,0.81),
+        legend.position = c(0.24,0.79),
         legend.title = element_text(face = "bold", size = 14),
         legend.text = element_text(size = 12),
         legend.background = element_blank())
 
-# northern_frequency <- northern_fill %>%
-#   group_by(Year) %>%
-#   summarise(TotalHWevents = sum(n))
-# northern_frequency[c(13:14,24),2] <- NA
-# northern_frequency$Year <- as.numeric(northern_frequency$Year)
-# northern_freq_lm <- lm(TotalHWevents~Year, data = northern_frequency)
-# summary(northern_freq_lm)
-# round((0.11313*1994)-224.67859) # 1 event
-# round((0.11313*2022)-224.67859) # 4 events
-
-fig5C <- ggplot(data = northern_fill) +
+fig6E <- ggplot(data = northern_fill) +
   geom_col(aes(x = as.numeric(Year), y = n,
                fill = forcats::fct_rev(as_factor(category))), color = "black",
            width = 1) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
-  annotate("text", x = 1994, y = 8, label = "c)", size = 6) +
+  annotate("text", x = 1994, y = 8, label = "e)", size = 6) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
@@ -1277,23 +1473,13 @@ fig5C <- ggplot(data = northern_fill) +
         legend.position = "none",
         legend.title = element_blank())
 
-# central_frequency <- central_fill %>%
-#   group_by(Year) %>%
-#   summarise(TotalHWevents = sum(n))
-# central_frequency[c(13:14,24),2] <- NA
-# central_frequency$Year <- as.numeric(central_frequency$Year)
-# central_freq_lm <- lm(TotalHWevents~Year, data = central_frequency)
-# summary(central_freq_lm)
-# round((0.11119*1994)-220.74448) # 1 event
-# round((0.11119*2022)-220.74448) # 4 events
-
-fig5E <- ggplot(data = central_fill) +
+fig6G <- ggplot(data = central_fill) +
   geom_col(aes(x = as.numeric(Year), y = n,
                fill = forcats::fct_rev(as_factor(category))), color = "black",
            width = 1) +
   scale_fill_manual(values = c("#7f1416","#cb3827","#f26722","#ffda68")) +
   # scale_fill_manual(values = c("#000000", "#777777","#C7C7C7","#FFFFFF")) + # For gray-scale
-  annotate("text", x = 1994, y = 8, label = "e)", size = 6) +
+  annotate("text", x = 1994, y = 8, label = "g)", size = 6) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
@@ -1318,15 +1504,44 @@ fig5E <- ggplot(data = central_fill) +
         legend.position = "none",
         legend.title = element_blank())
 
+# test <- lm(TotalDuration~Year, data = air_sum)
+# summary(test)
+# round((0.2084 * 1994) - 402.3813) # 13 days
+# round((0.2084 * 2022) - 402.3813) # 19 days
+
+fig6B <- ggplot(data = air_sum, aes(x = Year, y = TotalDuration)) +
+  geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
+  geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
+  annotate("text", x = 2017, y = 34, label = "(b", size = 6, hjust = 0) +
+  scale_x_continuous(breaks = seq(1994, 2022, 2)) +
+  scale_y_continuous(breaks = seq(0,30,5),
+                     limits = c(0,34)) +
+  labs(y = expression(atop("Atmosphere",
+                           paste("Total HW Days"))),
+       x = NULL) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+           r.accuracy = 0.01,
+           p.accuracy = 0.001,
+           label.x = 1995, label.y = 34, size = 5) +
+  annotate("text", x = 1995, y = 30.5,
+           label = 'y = 0.2084x - 402.3813',
+           size = 5, fontface = 1, hjust = 0) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "white"),
+        axis.title.x = element_blank(),
+        axis.text.y = element_text(size = 16, color = "black"))
+
 # test <- lm(TotalDuration~Year, data = water_sum)
 # summary(test)
 # round((0.6713 * 1994) - 1327.7352) # 11 days
 # round((0.6713 * 2022) - 1327.7352) # 30 days
 
-fig5B <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
+fig6D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 60, label = "(b", size = 6, hjust = 0) +
+  annotate("text", x = 2017, y = 60, label = "(d", size = 6, hjust = 0) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
@@ -1352,10 +1567,10 @@ fig5B <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
 # round((0.6702 * 1994) - 1325.1681) # 11 days
 # round((0.6702 * 2022) - 1325.1681) # 30 days
 
-fig5D <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
+fig6F <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 60, label = "(d", size = 6, hjust = 0) +
+  annotate("text", x = 2017, y = 60, label = "(f", size = 6, hjust = 0) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
@@ -1381,10 +1596,10 @@ fig5D <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
 # round((0.6749 * 1994) - 1334.4366) # 11 days
 # round((0.6749 * 2022) - 1334.4366) # 30 days
 
-fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
+fig6H <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
   geom_point(shape = 21, size = 2, color = "black", fill = "white", stroke = 1) +
-  annotate("text", x = 2017, y = 60, label = "(f", size = 6, hjust = 0) +
+  annotate("text", x = 2017, y = 60, label = "(h", size = 6, hjust = 0) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
@@ -1396,7 +1611,7 @@ fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
            p.accuracy = 0.001,
            label.x = 1995, label.y = 60, size = 5) +
   annotate("text", x = 1995, y = 53,
-           label = '0.6749x - 1334.4366',
+           label = 'y = 0.6749x - 1334.4366',
            size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -1405,22 +1620,33 @@ fig5F <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
         axis.title.x = element_blank(),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# width = 1200 height = 1100
-fig5A + fig5B + fig5C + fig5D + fig5E + fig5F + plot_layout(ncol = 2, nrow = 3)
+# width = 1200 height = 1500
+fig6A + fig6B + fig6C + fig6D + fig6E + fig6F + fig6G + fig6H + plot_layout(ncol = 2, nrow = 4)
 
 # Co-occurring heatwaves in June 2015
 
+ts_air = ts2clm(atm_longterm_daily, x = date, y = Temp,
+                  climatologyPeriod = c(min(atm_longterm_daily$date), max(atm_longterm_daily$date)))
+de_air_temp = detect_event(ts_air, x = date, y = Temp, minDuration = 3, maxGap = 0)
+
 ts_water = ts2clm(water_longterm_daily, x = date, y = Temp,
                   climatologyPeriod = c(min(water_longterm_daily$date), max(water_longterm_daily$date)))
-de_water_temp = detect_event(ts_water, x = date, y = Temp )
+de_water_temp = detect_event(ts_water, x = date, y = Temp)
 
 ts_northern = ts2clm(northern_longterm_daily, x = date, y = Temp,
                      climatologyPeriod = c(min(northern_longterm_daily$date), max(northern_longterm_daily$date)))
-de_northern_temp = detect_event(ts_northern, x = date, y = Temp )
+de_northern_temp = detect_event(ts_northern, x = date, y = Temp)
 
 ts_central = ts2clm(central_longterm_daily, x = date, y = Temp,
                     climatologyPeriod = c(min(central_longterm_daily$date), max(central_longterm_daily$date)))
-de_central_temp = detect_event(ts_central, x = date, y = Temp )
+de_central_temp = detect_event(ts_central, x = date, y = Temp)
+
+air_clim_cat <- de_air_temp$climatology %>%
+  dplyr::mutate(diff = thresh - seas,
+                thresh_2x = thresh + diff,
+                thresh_3x = thresh_2x + diff,
+                thresh_4x = thresh_3x + diff) %>% 
+  dplyr::slice(7822:7866)
 
 water_clim_cat <- de_water_temp$climatology %>%
   dplyr::mutate(diff = thresh - seas,
@@ -1448,12 +1674,60 @@ fillColCat <- c(
   "Moderate" = "#ffc866",
   "Strong" = "#ff6900",
   "Severe" = "#9e0000",
-  "Extreme" = "#2d0000"
-)
+  "Extreme" = "#2d0000")
 
-# Figure 6: Concurrent heatwaves in water column and sediments ----
-fig6_water <- ggplot(data = water_clim_cat, aes(x = date, y = Temp)) +
-  geom_flame(aes(y2 = thresh, fill = "Moderate")) +
+# Figure 8: Concurrent heatwaves in atmosphere, water column, and sediments ----
+
+fig8_air <- ggplot(data = air_clim_cat, aes(x = date, y = Temp, y2 = thresh)) +
+  geom_flame(n = 3, n_gap = 0, fill = "#ffc866") +
+  geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
+  geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
+  geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
+  geom_point(aes(y = Temp, col = "Temperature"), size = 3, color = "black") +
+  scale_fill_manual(name = NULL, values = fillColCat, guide = 'none') +
+  scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
+  scale_y_continuous(breaks = seq(15,31,2),
+                     limits = c(15,31)) +
+  labs(y = expression(atop("Atmosphere",
+                           paste("Temperature ( ", degree, "C)"))),
+       x = NULL) +
+  annotate("text", x = as.Date('2015-06-01'), y = 31, label = "(a", size = 6, hjust = 0) +
+  annotate("segment", color = "gray80", size = 1,
+           x = as.Date("2015-06-18", "%Y-%m-%d"),
+           xend = as.Date("2015-06-22", "%Y-%m-%d"),
+           y = 20, yend = 20) +
+  annotate("text", color = "black", label = "Climatological Mean", size = 5,
+           x = as.Date("2015-06-23", "%Y-%m-%d"),
+           y = 20,
+           hjust = 0) +
+  annotate("segment", color = "red", size = 1, linetype = 'longdash',
+           x = as.Date("2015-06-18", "%Y-%m-%d"),
+           xend = as.Date("2015-06-22", "%Y-%m-%d"),
+           y = 18.5, yend = 18.5) +
+  annotate("text", color = "black", label = "90th Percentile Threshold", size = 5,
+           x = as.Date("2015-06-23", "%Y-%m-%d"),
+           y = 18.5,
+           hjust = 0) +
+  annotate("segment", color = "black", size = 1,
+           x = as.Date("2015-06-18", "%Y-%m-%d"),
+           xend = as.Date("2015-06-22", "%Y-%m-%d"),
+           y = 17, yend = 17) +
+  annotate("point", color = 'black', size = 3,
+           x = as.Date("2015-06-20", "%Y-%m-%d"),
+           y = 17) +
+  annotate("text", color = "black", label = "Daily Mean Temperature", size = 5,
+           x = as.Date("2015-06-23", "%Y-%m-%d"),
+           y = 17,
+           hjust = 0) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "white"),
+        axis.title.x = element_text(size = 16, color = "white"),
+        axis.text.y = element_text(size = 16, color = "black"))
+
+fig8_water <- ggplot(data = water_clim_cat, aes(x = date, y = Temp, y2 = thresh)) +
+  geom_flame(n = 5, n_gap = 2, fill = "#ffc866") +
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
@@ -1465,33 +1739,7 @@ fig6_water <- ggplot(data = water_clim_cat, aes(x = date, y = Temp)) +
   labs(y = expression(atop("Wachapreague",
                            paste("Water Temperature ( ", degree, "C)"))),
        x = NULL) +
-  annotate("segment", color = "gray80", size = 1,
-           x = as.Date("2015-06-18", "%Y-%m-%d"),
-           xend = as.Date("2015-06-22", "%Y-%m-%d"),
-           y = 22, yend = 22) +
-  annotate("text", color = "black", label = "Climatological Mean", size = 5,
-           x = as.Date("2015-06-23", "%Y-%m-%d"),
-           y = 22,
-           hjust = 0) +
-  annotate("segment", color = "red", size = 1, linetype = 'longdash',
-           x = as.Date("2015-06-18", "%Y-%m-%d"),
-           xend = as.Date("2015-06-22", "%Y-%m-%d"),
-           y = 20.5, yend = 20.5) +
-  annotate("text", color = "black", label = "90th Percentile Threshold", size = 5,
-           x = as.Date("2015-06-23", "%Y-%m-%d"),
-           y = 20.5,
-           hjust = 0) +
-  annotate("segment", color = "black", size = 1,
-           x = as.Date("2015-06-18", "%Y-%m-%d"),
-           xend = as.Date("2015-06-22", "%Y-%m-%d"),
-           y = 19, yend = 19) +
-  annotate("point", color = 'black', size = 3,
-           x = as.Date("2015-06-20", "%Y-%m-%d"),
-           y = 19) +
-  annotate("text", color = "black", label = "Daily Mean Temperature", size = 5,
-           x = as.Date("2015-06-23", "%Y-%m-%d"),
-           y = 19,
-           hjust = 0) +
+  annotate("text", x = as.Date('2015-06-01'), y = 31, label = "(b", size = 6, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1499,8 +1747,8 @@ fig6_water <- ggplot(data = water_clim_cat, aes(x = date, y = Temp)) +
         axis.title.x = element_text(size = 16, color = "white"),
         axis.text.y = element_text(size = 16, color = "black"))
 
-fig6_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp)) +
-  geom_flame(aes(y2 = thresh, fill = "Moderate")) +
+fig8_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp, y2 = thresh)) +
+  geom_flame(n = 5, n_gap = 2, fill = "#ffc866") +
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
@@ -1512,6 +1760,7 @@ fig6_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp)) +
   labs(y = expression(atop("Northern Edge",
                            paste("Sediment Temperature (  ", degree, "C)"))),
        x = NULL) +
+  annotate("text", x = as.Date('2015-06-01'), y = 31, label = "(c", size = 6, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1519,8 +1768,8 @@ fig6_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp)) +
         axis.title.x = element_text(size = 16, color = "white"),
         axis.text.y = element_text(size = 16, color = "black"))
 
-fig6_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp)) +
-  geom_flame(aes(y2 = thresh, fill = "Moderate")) +
+fig8_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp, y2 = thresh)) +
+  geom_flame(n = 5, n_gap = 2, fill = "#ffc866") +
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
@@ -1532,6 +1781,7 @@ fig6_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp)) +
   labs(y = expression(atop("Central",
                            paste("Sediment Temperature (  ", degree, "C)"))),
        x = "2015") +
+  annotate("text", x = as.Date('2015-06-01'), y = 31, label = "(d", size = 6, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1539,14 +1789,15 @@ fig6_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp)) +
         axis.title.x = element_text(size = 16, color = "black"),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# width = 600 height = 1000
-fig6_water + fig6_north + fig6_central + plot_layout(ncol = 1)
+# width = 600 height = 1300
+fig8_air + fig8_water + fig8_north + fig8_central + plot_layout(ncol = 1)
 
 # heatwave trend analyses
 
-hw_water <- saveDat_Temp[saveDat_Temp$Station == 'water',]
-hw_central <- saveDat_Temp[saveDat_Temp$Station == 'central',]
-hw_northern <- saveDat_Temp[saveDat_Temp$Station == 'northern',]
+# hw_air <- saveDat_Temp_air
+# hw_water <- saveDat_Temp[saveDat_Temp$Station == 'water',]
+# hw_central <- saveDat_Temp[saveDat_Temp$Station == 'central',]
+# hw_northern <- saveDat_Temp[saveDat_Temp$Station == 'northern',]
 
 saveDat_Temp <- saveDat_Temp %>%
   mutate(year = year(date_peak),
@@ -1569,31 +1820,38 @@ hw_season <- saveDat_Temp %>%
             Avg.CuInt = mean(intensity_cumulative_relThresh, na.rm = T),
             Frequency = length(duration))
 
-fill <- data.frame(matrix(ncol = 2, nrow = 87))
+fill <- data.frame(matrix(ncol = 2, nrow = 29*4)) # 29 years * 4 sites
 colnames(fill)[1:2] <- c("Station","year")
-fill$year <- rep(seq(1994,2022,1),3)
-fill$Station <- rep(c("central","northern","water"), each = 29)
+fill$year <- rep(seq(1994,2022,1),4)
+fill$Station <- rep(c("air","central","northern","water"), each = 29)
 
 hw_time <- merge(hw_time,fill, by = c('Station',"year"), all = TRUE)
 hw_time[is.na(hw_time)] <- 0
-hw_time[hw_time$year %in% c(2006,2007,2017),3:5] <- NA
+hw_time_air <- hw_time[hw_time$Station == 'air',]
+hw_time_else <- hw_time[!hw_time$Station == 'air',]
+hw_time_else[hw_time_else$year %in% c(2006,2007,2017),3:5] <- NA
+hw_time <- rbind(hw_time_air,hw_time_else)
 kable_hw_time <- hw_time %>%
   group_by(Station) %>%
-  summarise(meanDuration = round(mean(Avg.Duration, na.rm = T),),
-            meanCuInt = round(mean(Avg.CuInt, na.rm = T),1),
-            meanFrequency = round(mean(frequency, na.rm = T),),
+  summarise(meanFrequency = round(mean(frequency, na.rm = T)),
             sdFrequency = round(sd(frequency, na.rm = T)))
 hw_time <- na.omit(hw_time)
 
-fill2 <- data.frame(matrix(ncol = 3, nrow = 348))
+fill2 <- data.frame(matrix(ncol = 3, nrow = 4*29*4)) # 4 locations * 29 years * 4 seasons
 colnames(fill2)[1:3] <- c("Station","season","year")
-fill2$year <- rep(seq(1994,2022,1),12)
-fill2$season <- rep(c("Winter","Spring","Summer","Fall"), each = 87)
-fill2$Station <- rep(c("central","northern","water"), times = 116)
+fill2$year <- rep(seq(1994,2022,1),4*4) # 4 locations * 4 seasons
+fill2$season <- rep(c("Winter","Spring","Summer","Fall"), each = 4*29) # 4 seasons * 29 years
+fill2$Station <- rep(c("air","central","northern","water"), times = 116)
 hw_season <- merge(hw_season, fill2, by = c("year","season","Station"), all = TRUE)
 hw_season[is.na(hw_season)] <- 0
-hw_season[hw_season$year %in% c(2006,2007,2017),3:5] <- NA
+hw_season_air <- hw_season[hw_season$Station == 'air',]
+hw_season_else <- hw_season[!hw_season$Station == 'air',]
+hw_season_else[hw_season_else$year %in% c(2006,2007,2017),3:5] <- NA
+hw_season <- rbind(hw_season_air,hw_season_else)
 hw_season <- na.omit(hw_season)
+hw_season_air <- hw_season %>%
+  filter(Station == 'air') %>%
+  select(-Station)
 hw_season_water <- hw_season %>%
   filter(Station == 'water') %>%
   select(-Station)
@@ -1670,7 +1928,62 @@ for(i in 1:length(aa)){
 
 # Mann Kendall and sen's slope heatwave trend analysis
 # Looking for temporal trends among seasons in HW avg. duration, avg. cuInt, and frequency
-# in water temperature, central, and northern sediment temperature
+# in air and water temperature and central and northern sediment temperature
+for(i in 1:length(bb)){
+  curDat = hw_season_air[hw_season_air$season == bb[i],3]
+  ManKen = MannKendall(curDat)
+  ss = sens.slope(curDat)
+  p.val = ManKen$sl
+  slope = ss$estimates
+  Season = bb[i]
+  cur_hw_season_air = data.frame(TestType = Season,
+                                   Variable = "Avg.Duration",
+                                   Category = Season,
+                                   slope = round(slope, 3),
+                                   p.val = round(p.val, 4))
+  if( i == 1){
+    hw_season_air_duration = cur_hw_season_air
+  } else{
+    hw_season_air_duration = rbind(hw_season_air_duration, cur_hw_season_air)
+  }
+}
+for(i in 1:length(bb)){
+  curDat = hw_season_air[hw_season_air$season == bb[i],4]
+  ManKen = MannKendall(curDat)
+  ss = sens.slope(curDat)
+  p.val = ManKen$sl
+  slope = ss$estimates
+  Season = bb[i]
+  cur_hw_season_air = data.frame(TestType = Season,
+                                   Variable = "Avg.CuInt",
+                                   Category = Season,
+                                   slope = round(slope, 3),
+                                   p.val = round(p.val, 4))
+  if( i == 1){
+    hw_season_air_intensity = cur_hw_season_air
+  } else{
+    hw_season_air_intensity = rbind(hw_season_air_intensity, cur_hw_season_air)
+  }
+}
+for(i in 1:length(bb)){
+  curDat = hw_season_air[hw_season_air$season == bb[i],5]
+  ManKen = MannKendall(curDat)
+  ss = sens.slope(curDat)
+  p.val = ManKen$sl
+  slope = ss$estimates
+  Season = bb[i]
+  cur_hw_season_air = data.frame(TestType = Season,
+                                   Variable = "Frequency",
+                                   Category = Season,
+                                   slope = round(slope, 3),
+                                   p.val = round(p.val, 4))
+  if( i == 1){
+    hw_season_air_freq = cur_hw_season_air
+  } else{
+    hw_season_air_freq = rbind(hw_season_air_freq, cur_hw_season_air)
+  }
+}
+
 for(i in 1:length(bb)){
   curDat = hw_season_water[hw_season_water$season == bb[i],3]
   ManKen = MannKendall(curDat)
@@ -1839,17 +2152,19 @@ for(i in 1:length(bb)){
 hw_time_output <- rbind(hw_time_duration, hw_time_intensity, hw_time_freq)
 hw_time_output <- hw_time_output %>% arrange(-desc(p.val))
 
-fdr_table <- data.frame(matrix(ncol = 2, nrow = 9))
+fdr_table <- data.frame(matrix(ncol = 2, nrow = 12))
 x <- c("Rank", "FDR_0.1")
 colnames(fdr_table) <- x
-fdr_table[1:9,1] <- seq(1,9,1)
-fdr_table[1:9,2] <- (fdr_table$Rank[1:9]/9)*.1
+fdr_table[1:12,1] <- seq(1,12,1)
+fdr_table[1:12,2] <- (fdr_table$Rank[1:12]/12)*.1
 
 hw_time_output <- cbind(hw_time_output,fdr_table)
 hw_time_output$SigTest <- ifelse(hw_time_output$p.val < hw_time_output$FDR_0.1,
                                  "Sig", "NS")
 View(hw_time_output)
 
+hw_season_air_output <- rbind(hw_season_air_duration, hw_season_air_intensity, hw_season_air_freq)
+hw_season_air_output <- hw_season_air_output %>% arrange(-desc(p.val))
 hw_season_water_output <- rbind(hw_season_water_duration, hw_season_water_intensity, hw_season_water_freq)
 hw_season_water_output <- hw_season_water_output %>% arrange(-desc(p.val))
 hw_season_northern_output <- rbind(hw_season_northern_duration, hw_season_northern_intensity, hw_season_northern_freq)
@@ -1857,6 +2172,7 @@ hw_season_northern_output <- hw_season_northern_output %>% arrange(-desc(p.val))
 hw_season_central_output <- rbind(hw_season_central_duration, hw_season_central_intensity, hw_season_central_freq)
 hw_season_central_output <- hw_season_central_output %>% arrange(-desc(p.val))
 
+View(hw_season_air_output)
 View(hw_season_water_output)
 View(hw_season_northern_output)
 View(hw_season_central_output)
@@ -1870,7 +2186,7 @@ test <- saveDat_Temp %>%
   summarise(TotalEvent = NROW(duration),
             MeanDuration = round(mean(duration)),
             MaxDuration = max(duration),
-            MeanInt_relThres = round(mean(intensity_max_relThresh),digits = 1),
+            MeanInt_relThres = round(mean(intensity_mean_relThresh),digits = 1),
             MaxInt_relThres = round(max(intensity_max_relThresh),digits = 1))
 test$Station <- as.factor(test$Station)
 test <- test[order(test$Station, decreasing = T),]
@@ -1880,29 +2196,35 @@ test %>%
   kable_styling(full_width = F, html_font = "Times New Roman", position = 'center') %>%
   kable_classic(html_font = "Cambria")
 
-
-df <- data.frame(matrix(ncol = 4, nrow = 6))
-colnames(df)[1:4] <- c("Variable","Water","Northern","Central")
-df$Variable <- c("Total Events",
+# Table 1: Heatwave characteristics ----
+table1 <- data.frame(matrix(ncol = 5, nrow = 6))
+colnames(table1)[1:5] <- c("Variable","Atmosphere","Water","Edge","Central")
+table1$Variable <- c("Total Events",
                  "Frequency (events year<sup> -1</sup>)",
                  "Mean Duration (days)",
                  "Max Duration (days)",
                  "Mean Intensity - Rel. Thres. (<sup> o</sup>C)",
                  "Max Intensity - Rel. Thres. (<sup> o</sup>C)")
-df$Water <- c(test[1,2],
-              paste(kable_hw_time[3,4], kable_hw_time[3,5], sep = " ± "),
+table1$Atmosphere <- c(test[4,2],
+              paste(kable_hw_time[1,2], kable_hw_time[1,3], sep = " ± "),
+              test[4,3],
+              test[4,4],
+              test[4,5],
+              test[4,6])
+table1$Water <- c(test[1,2],
+              paste(kable_hw_time[4,2], kable_hw_time[4,3], sep = " ± "),
               test[1,3],
               test[1,4],
               test[1,5],
               test[1,6])
-df$Northern <- c(test[2,2],
-                 paste(kable_hw_time[2,4], kable_hw_time[2,5], sep = " ± "),
+table1$Edge <- c(test[2,2],
+                 paste(kable_hw_time[3,2], kable_hw_time[3,3], sep = " ± "),
                  test[2,3],
                  test[2,4],
                  test[2,5],
                  test[2,6])
-df$Central <- c(test[3,2],
-                paste(kable_hw_time[1,4], kable_hw_time[1,5], sep = " ± "),
+table1$Central <- c(test[3,2],
+                paste(kable_hw_time[2,2], kable_hw_time[2,3], sep = " ± "),
                 test[3,3],
                 test[3,4],
                 test[3,5],
@@ -1910,11 +2232,12 @@ df$Central <- c(test[3,2],
 
 setwd("D:/School/SeagrassRecovery/Data/Sediment")
 
-df %>%
-  kbl(escape =  F, align = 'rccc') %>%
+table1 %>%
+  kbl(escape =  F, align = 'rcccc') %>%
   kable_styling(full_width = F, html_font = "Times New Roman", position = 'left') %>%
   kable_classic(html_font = "Cambria") %>%
-  save_kable(file = 'hw_table.html')
+  column_spec(1:5, background = 'white') %>%
+  save_kable(file = 'Table1.html')
 
 # Gap filling observed water and sediment temperature for Wavelet Analysis ----
 
@@ -2080,7 +2403,7 @@ water %>%
         legend.position = c(0.1,0.15),
         legend.text = element_text(size = 16, color = 'black'))
 
-# Wavelet analysis ----
+# Figure 3: Wavelet analysis ----
 
 library(biwavelet)
 
