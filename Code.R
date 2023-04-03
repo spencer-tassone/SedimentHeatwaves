@@ -292,7 +292,7 @@ Fig1a <- ggplot(data = dat_hourly) +
            xend = as.Date("2020-07-25", "%Y-%m-%d"),
            y = 3, yend = 3) +
   annotate("text", x = as.Date("2020-07-30", "%Y-%m-%d"), y = 5,
-           label = 'Northern',
+           label = 'Edge',
            size = 5, fontface = 1, hjust = 0) +
   annotate("text", x = as.Date("2020-07-30", "%Y-%m-%d"), y = 3.1,
            label = "Central",
@@ -382,10 +382,10 @@ Fig1b <- ggplot(data = dat_daily) +
            xmax = as.Date("2021-02-05", "%Y-%m-%d"),
            ymin = 3.4, ymax = 4.2) +
   annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 4,
-           label = 'Pos. = Central > North',
+           label = 'Pos. = Central > Edge',
            size = 5, fontface = 1, hjust = 0) +
   annotate("text", x = as.Date("2020-07-01", "%Y-%m-%d"), y = 3.6,
-           label = "Neg. = North > Central",
+           label = "Neg. = Edge > Central",
            size = 5, fontface = 1, hjust = 0) + 
   annotate("text", x = as.Date("2022-10-02", "%Y-%m-%d"), y = 4,
            label = "(b",
@@ -410,31 +410,30 @@ Fig1b <- ggplot(data = dat_daily) +
 Fig1a + Fig1b + plot_layout(ncol = 1)
 
 # Figure 2: Hourly water and sediment temperature (including difference) for both location ----
-# width = 1000 height = 700
 central <- dat_hourly[,c(1,24,26,31)]
 northern <- dat_hourly[,c(1,25,27,30)]
 
-dat_hourly %>%
-  summarise(max_central_water = round(max(central_watertemp, na.rm = T),1),
-            min_central_water = round(min(central_watertemp, na.rm = T),1),
-            max_central_sed = round(max(central_sedtemp, na.rm = T),1),
-            min_central_sed = round(min(central_sedtemp, na.rm = T),1),
-            max_northern_water = round(max(northern_watertemp, na.rm = T),1),
-            min_northern_water = round(min(northern_watertemp, na.rm = T),1),
-            max_northern_sed = round(max(northern_sedtemp, na.rm = T),1),
-            min_northern_sed = round(min(northern_sedtemp, na.rm = T),1),
-            range_central_water = max_central_water-min_central_water,
-            range_central_sed = max_central_sed-min_central_sed,
-            range_northern_water = max_northern_water-min_northern_water,
-            range_northern_sed = max_northern_sed-min_northern_sed,
-            range_central_watersed = range_central_water-range_central_sed,
-            range_northern_watersed = range_northern_water-range_northern_sed,
-            max_central_diff = max(delta_sed_water_central, na.rm = T),
-            min_central_diff = min(delta_sed_water_central, na.rm = T),
-            max_northern_diff = max(delta_sed_water_north, na.rm = T),
-            min_northern_diff = min(delta_sed_water_north, na.rm = T),
-            range_central_diff = round(max_central_diff - min_central_diff,1),
-            range_northern_diff = round(max_northern_diff - min_northern_diff,1)) 
+# dat_hourly %>%
+#   summarise(max_central_water = round(max(central_watertemp, na.rm = T),1),
+#             min_central_water = round(min(central_watertemp, na.rm = T),1),
+#             max_central_sed = round(max(central_sedtemp, na.rm = T),1),
+#             min_central_sed = round(min(central_sedtemp, na.rm = T),1),
+#             max_northern_water = round(max(northern_watertemp, na.rm = T),1),
+#             min_northern_water = round(min(northern_watertemp, na.rm = T),1),
+#             max_northern_sed = round(max(northern_sedtemp, na.rm = T),1),
+#             min_northern_sed = round(min(northern_sedtemp, na.rm = T),1),
+#             range_central_water = max_central_water-min_central_water,
+#             range_central_sed = max_central_sed-min_central_sed,
+#             range_northern_water = max_northern_water-min_northern_water,
+#             range_northern_sed = max_northern_sed-min_northern_sed,
+#             range_central_watersed = range_central_water-range_central_sed,
+#             range_northern_watersed = range_northern_water-range_northern_sed,
+#             max_central_diff = max(delta_sed_water_central, na.rm = T),
+#             min_central_diff = min(delta_sed_water_central, na.rm = T),
+#             max_northern_diff = max(delta_sed_water_north, na.rm = T),
+#             min_northern_diff = min(delta_sed_water_north, na.rm = T),
+#             range_central_diff = round(max_central_diff - min_central_diff,1),
+#             range_northern_diff = round(max_northern_diff - min_northern_diff,1)) 
 
 central <- central %>%
   mutate(Location = "Central",
@@ -447,7 +446,7 @@ central <- central %>%
                       values_to = 'Temperature')
 
 northern <- northern %>%
-  mutate(Location = "Northern Edge",
+  mutate(Location = "Edge",
          Date = date(DateTime)) %>%
   rename("Sediment" = "northern_sedtemp",
          "Water" = "northern_watertemp",
@@ -467,7 +466,7 @@ p1 <- df1 %>%
                    false = "Difference")) %>% 
   ggplot() +
   geom_line(aes(x = Date, y = Temperature, group = Variable, color = Variable)) +
-  scale_color_manual(values = alpha(c("red", "black"), c(0.4,1)),
+  scale_color_manual(values = alpha(c("blue", "chocolate4"), c(0.4,1)),
                      breaks = c('Water','Sediment')) +
   scale_x_date(date_breaks = "2 month",
                date_labels = "%b",
@@ -555,7 +554,7 @@ p1 <- df1 %>%
 
 dat_text1 <- data.frame(
   label = c("(a","(b"),
-  Location = c('Northern Edge','Central'),
+  Location = c('Edge','Central'),
   x = c(as.Date("2022-08-15", "%Y-%m-%d"),
         as.Date("2022-08-15", "%Y-%m-%d")),
   y = c(3,3))
@@ -660,7 +659,7 @@ p2 <- df1 %>%
 
 dat_text2 <- data.frame(
   label = c("Positive = Water > Sediment", "Negative = Sediment > Water", "(c","(d"),
-  Location = c('Northern Edge','Northern Edge','Northern Edge','Central'),
+  Location = c('Edge','Edge','Edge','Central'),
   x = c(as.Date("2020-08-01", "%Y-%m-%d"),
         as.Date("2020-08-01", "%Y-%m-%d"),
         as.Date("2020-08-01", "%Y-%m-%d"),
@@ -675,12 +674,8 @@ p2 <- p2 + geom_text(
                 size = 10),
   size = 5)
 
+# width = 1000 height = 700
 p1 + p2 + plot_layout(ncol = 2)
-
-# path = "D:/School/SeagrassRecovery/Data/Sediment"
-# ggsave(path = path,
-#        filename = 'Fig2.jpg',
-#        width = 10, height = 6.5, units = 'in', device = 'jpg', dpi = 300)
 
 # how much hourly sediment temperature is missing?
 round(sum(is.na(dat_hourly$central_sedtemp))/NROW(dat_hourly),2)*100 # 2%
@@ -800,8 +795,52 @@ Valid <- test_dat[-sample,]
 # build model using training datasets
 train_central_lm <- lm(central_sedtemp~watertemp_c+wl_diff+DoY+hour, data = Train)
 train_northern_lm <- lm(northern_sedtemp~watertemp_c+wl_diff+DoY+hour, data = Train)
-summary(train_central_lm)
-summary(train_northern_lm)
+
+# Table 2: Multiple Linear Regression Model Results ----
+library(kableExtra)
+
+cen <- summary(train_central_lm)
+edge <- summary(train_northern_lm)
+
+table2 <- data.frame(matrix(ncol = 6, nrow = 10))
+colnames(table2)[1:6] <- c("Location","Variable","Estimate ± SE","Variable p-val.","Adj. R<sup> 2</sup>","Model p-val.")
+table2$Variable <- c("Intercept",
+                     "Water Temp. (<sup> o</sup>C)",
+                     "Water Level (m)",
+                     "Day of Year",
+                     "Hour",
+                     "Intercept",
+                     "Water Temp. (<sup> o</sup>C)",
+                     "Water Level (m)",
+                     "Day of Year",
+                     "Hour")
+table2$Location <- c('Edge',"","","","",
+                     'Central',"","","","")
+table2$`Estimate ± SE` <- c(paste(round(edge$coefficients[1,1],3),round(edge$coefficients[1,2],3), sep = " ± "),
+                            paste(round(edge$coefficients[2,1],3),round(edge$coefficients[2,2],3), sep = " ± "),
+                            paste(round(edge$coefficients[3,1],3),round(edge$coefficients[3,2],3), sep = " ± "),
+                            paste(round(edge$coefficients[4,1],3),round(edge$coefficients[4,2],3), sep = " ± "),
+                            paste(round(edge$coefficients[5,1],3),round(edge$coefficients[5,2],3), sep = " ± "),
+                            paste(round(cen$coefficients[1,1],3),round(cen$coefficients[1,2],3), sep = " ± "),
+                            paste(round(cen$coefficients[2,1],3),round(cen$coefficients[2,2],3), sep = " ± "),
+                            paste(round(cen$coefficients[3,1],3),round(cen$coefficients[3,2],3), sep = " ± "),
+                            paste(round(cen$coefficients[4,1],3),round(cen$coefficients[4,2],3), sep = " ± "),
+                            paste(round(cen$coefficients[5,1],3),round(cen$coefficients[5,2],3), sep = " ± "))
+table2$`Variable p-val.` <- c('< 0.001','< 0.001','< 0.001','< 0.001','< 0.001',
+                              '< 0.001','< 0.001',round(cen$coefficients[3,4],3),'< 0.001','< 0.001')
+table2$`Adj. R<sup> 2</sup>` <- c(round(edge$adj.r.squared,3),"","","","",
+                                  round(cen$adj.r.squared,3),"","","","")
+table2$`Model p-val.` <- c('< 0.001',"","","","",
+                           '< 0.001',"","","","")
+
+setwd("D:/School/SeagrassRecovery/Data/Sediment")
+
+table2 %>%
+  kbl(escape =  F, align = 'llcccc') %>%
+  kable_styling(full_width = F, html_font = "Times New Roman", position = 'left') %>%
+  kable_classic(html_font = "Cambria") %>%
+  column_spec(1:5, background = 'white') %>%
+  save_kable(file = 'Table2.html')
 
 # test model fits using validation datasets
 pred_Valid_central <- predict(train_central_lm, newdata = Valid)
@@ -821,17 +860,17 @@ cent$site <- 'Central'
 north <- Valid[,c(4,13)]
 north <- as.data.frame(north)
 colnames(north)[1:2] <- c('obs_sedtemp','pred_sedtemp')
-north$site <- 'Northern Edge'
+north$site <- 'Edge'
 
 Fig4 <- rbind(cent,north)
 
 # Figure 4: Linear regression between predicted and observed sediment temperature ----
 # width = 600 height = 900
 Fig4 %>%
-  mutate(across(site, factor, levels = c('Northern Edge', 'Central'))) %>%
+  mutate(across(site, factor, levels = c('Edge', 'Central'))) %>%
   ggplot(aes(x = obs_sedtemp, y = pred_sedtemp)) +
   geom_point(alpha = 0.25) +
-  geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red") +
+  geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red", size = 1) +
   stat_smooth(method = 'lm') +
   scale_x_continuous(breaks = seq(0,30,5),
                      limits = c(0,32)) +
@@ -854,6 +893,66 @@ Fig4 %>%
         strip.text = element_text(size = 16)) +
   facet_wrap(~site, ncol = 1, strip.position = 'right')
 
+# Test Figure 4: Model fit for warm vs. cool sediment temperatures ----
+test_warm <- Fig4 %>%
+  filter(obs_sedtemp >= 25)
+test_cool <- Fig4 %>%
+  filter(obs_sedtemp < 25)
+
+test_warm %>%
+  mutate(across(site, factor, levels = c('Edge', 'Central'))) %>%
+  ggplot(aes(x = obs_sedtemp, y = pred_sedtemp)) +
+  geom_point(alpha = 0.25) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red", size = 1) +
+  stat_smooth(method = 'lm') +
+  scale_x_continuous(breaks = seq(25,32,1),
+                     limits = c(25,32)) +
+  scale_y_continuous(breaks = seq(25,32,1),
+                     limits = c(25,32)) +
+  ylab(expression(paste("Predicted Sediment Temperature (  ", degree,"C)"))) +
+  xlab(expression(paste("Observed Sediment Temperature (", degree,"C)"))) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+           r.accuracy = 0.001,
+           p.accuracy = 0.001,
+           label.x = 25, label.y = 31.5, size = 5) +
+  stat_regline_equation(aes(label = ..eq.label..),
+                        label.x = 25, label.y = 32, size = 5) +
+  theme_bw() +
+  theme(panel.grid = element_blank(), 
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"),
+        strip.background = element_rect(fill = "gray90"),
+        strip.text = element_text(size = 16)) +
+  facet_wrap(~site, ncol = 1, strip.position = 'right')
+
+test_cool %>%
+  mutate(across(site, factor, levels = c('Edge', 'Central'))) %>%
+  ggplot(aes(x = obs_sedtemp, y = pred_sedtemp)) +
+  geom_point(alpha = 0.25) +
+  geom_abline(slope = 1, intercept = 0, linetype = 'longdash', color = "red", size = 1) +
+  stat_smooth(method = 'lm') +
+  scale_x_continuous(breaks = seq(0,25,5),
+                     limits = c(0,25)) +
+  scale_y_continuous(breaks = seq(0,25,5),
+                     limits = c(0,25)) +
+  ylab(expression(paste("Predicted Sediment Temperature (  ", degree,"C)"))) +
+  xlab(expression(paste("Observed Sediment Temperature (", degree,"C)"))) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+           r.accuracy = 0.001,
+           p.accuracy = 0.001,
+           label.x = 0, label.y = 23, size = 5) +
+  stat_regline_equation(aes(label = ..eq.label..),
+                        label.x = 0, label.y = 25, size = 5) +
+  theme_bw() +
+  theme(panel.grid = element_blank(), 
+        text = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"),
+        strip.background = element_rect(fill = "gray90"),
+        strip.text = element_text(size = 16)) +
+  facet_wrap(~site, ncol = 1, strip.position = 'right')
+
 longterm_dat <- water_level_temp
 longterm_dat$doy <- yday(longterm_dat$date)
 longterm_pred_central <- predict(train_central_lm, newdata = longterm_dat)
@@ -864,7 +963,7 @@ longterm_dat$stemp_pred_northern <- longterm_pred_northern
 central <- longterm_dat[,c(1:11)]
 north <- longterm_dat[,c(1:10,12)]
 central$Location <- "Central"
-north$Location <- "Northern Edge"
+north$Location <- "Edge"
 colnames(central)[11] <- "Temperature"
 colnames(north)[11] <- "Temperature"
 Fig5 <- rbind(central, north)
@@ -1023,7 +1122,51 @@ atm_longterm_daily %>%
         axis.text.x = element_text(size = 16, color = "black"),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# cannot add atmospheric time series to water and sediment b/c difference in HW defanition
+# Are there long-term trends in atmospheric and water temperature? ----
+library(wql) # Seasonal Kendall trend test
+
+# convert daily atmo temperature time series into monthly
+atm_longterm_monthly <- atm_longterm_daily %>%
+  mutate(month = month(date),
+         year = year(date)) %>%
+  group_by(year,month) %>%
+  summarise(Temp_monthly = round(mean(Temp, na.rm = T),2)) %>%
+  ungroup() %>%
+  select(Temp_monthly)
+
+# convert dataframe to ts object
+atemp_ts = ts(data = atm_longterm_monthly,
+              start = c(1994,1),
+              end = c(2022,12),
+              frequency = 12)
+round(seaKen(atemp_ts)$sen.slope,3) # annual rate of air temperature increase of 0.032 C per year
+seaKen(atemp_ts)$p.value # p-value < 0.001
+
+# convert daily water temperature time series into monthly
+water_longterm_monthly <- water_longterm_daily %>%
+  mutate(month = month(date),
+         year = year(date)) %>%
+  group_by(year,month) %>%
+  summarise(Total_obs = sum(is.nan(Temp)),
+            Temp_monthly = round(mean(Temp, na.rm = T),2))
+
+# convert months with >= 10 days of missing daily data to NaN
+water_longterm_monthly$Temp_monthly[water_longterm_monthly$Total_obs >= 10] <- NaN
+
+# isolate monthly mean water temperature column
+water_longterm_monthly <- water_longterm_monthly %>%
+  ungroup() %>%
+  select(Temp_monthly)
+
+# convert dataframe to ts object
+wtemp_ts = ts(data = water_longterm_monthly,
+              start = c(1994,1),
+              end = c(2022,12),
+              frequency = 12)
+round(seaKen(wtemp_ts)$sen.slope,3) # annual rate of water temperature increase of 0.041 C per year
+seaKen(wtemp_ts)$p.value # p-value < 0.001
+
+# cannot add atmospheric time series to water and sediment b/c difference in HW definition
 water_sed_daily_data <- rbind(central_longterm_daily,
                         northern_longterm_daily,
                         water_longterm_daily)
@@ -1264,7 +1407,7 @@ saveCat_Temp %>%
          frac_edge = round((Edge/sum(Edge))*100),
          frac_cent = round((Central/sum(Central))*100))
 
-# lag between atmo HW and pelagic HW, and lag between pelagic HW and sediment HW ----
+# Lag between atmo HW and pelagic HW, and lag between pelagic HW and sediment HW ----
 
 lag_air <- saveDat_Temp %>%
   filter(Station == 'air') %>%
@@ -1452,7 +1595,7 @@ fig6E <- ggplot(data = northern_fill) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
-  labs(y = expression(atop("Northern Edge",
+  labs(y = expression(atop("Sediment - Edge",
                            paste("Total HW Events"))),
        x = NULL) +
   guides(fill=guide_legend(title="Category")) +
@@ -1483,7 +1626,7 @@ fig6G <- ggplot(data = central_fill) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0,8,1),
                      limits = c(0,8)) +
-  labs(y = expression(atop("Central",
+  labs(y = expression(atop("Sediment - Central",
                            paste("Total HW Events"))),
        x = NULL) +
   guides(fill=guide_legend(title="Category")) +
@@ -1504,10 +1647,12 @@ fig6G <- ggplot(data = central_fill) +
         legend.position = "none",
         legend.title = element_blank())
 
-# test <- lm(TotalDuration~Year, data = air_sum)
-# summary(test)
-# round((0.2084 * 1994) - 402.3813) # 13 days
-# round((0.2084 * 2022) - 402.3813) # 19 days
+test <- lm(TotalDuration~Year, data = air_sum)
+summary(test)
+round((0.2084 * 1994) - 402.3813) # 13 days
+round((0.2084 * 2022) - 402.3813) # 19 days
+plot(cooks.distance(test))
+abline(h = 4/NROW(central_sum), col="red") # https://stats.stackexchange.com/questions/164099/removing-outliers-based-on-cooks-distance-in-r-language
 
 fig6B <- ggplot(data = air_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
@@ -1533,10 +1678,12 @@ fig6B <- ggplot(data = air_sum, aes(x = Year, y = TotalDuration)) +
         axis.title.x = element_blank(),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# test <- lm(TotalDuration~Year, data = water_sum)
-# summary(test)
-# round((0.6713 * 1994) - 1327.7352) # 11 days
-# round((0.6713 * 2022) - 1327.7352) # 30 days
+test <- lm(TotalDuration~Year, data = water_sum)
+summary(test)
+round((0.6713 * 1994) - 1327.7352) # 11 days
+round((0.6713 * 2022) - 1327.7352) # 30 days
+plot(cooks.distance(test))
+abline(h = 4/NROW(central_sum), col="red") # https://stats.stackexchange.com/questions/164099/removing-outliers-based-on-cooks-distance-in-r-language
 
 fig6D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
@@ -1562,10 +1709,12 @@ fig6D <- ggplot(data = water_sum, aes(x = Year, y = TotalDuration)) +
         axis.title.x = element_blank(),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# test <- lm(TotalDuration~Year, data = northern_sum)
-# summary(test)
-# round((0.6702 * 1994) - 1325.1681) # 11 days
-# round((0.6702 * 2022) - 1325.1681) # 30 days
+test <- lm(TotalDuration~Year, data = northern_sum)
+summary(test)
+round((0.6702 * 1994) - 1325.1681) # 11 days
+round((0.6702 * 2022) - 1325.1681) # 30 days
+plot(cooks.distance(test))
+abline(h = 4/NROW(central_sum), col="red") # https://stats.stackexchange.com/questions/164099/removing-outliers-based-on-cooks-distance-in-r-language
 
 fig6F <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
@@ -1574,7 +1723,7 @@ fig6F <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
-  labs(y = expression(atop("Northern Edge",
+  labs(y = expression(atop("Sediment - Edge",
                            paste("Total HW Days"))),
        x = NULL) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
@@ -1591,10 +1740,12 @@ fig6F <- ggplot(data = northern_sum, aes(x = Year, y = TotalDuration)) +
         axis.title.x = element_blank(),
         axis.text.y = element_text(size = 16, color = "black"))
 
-# test <- lm(TotalDuration~Year, data = central_sum)
-# summary(test)
-# round((0.6749 * 1994) - 1334.4366) # 11 days
-# round((0.6749 * 2022) - 1334.4366) # 30 days
+test <- lm(TotalDuration~Year, data = central_sum)
+summary(test)
+round((0.6749 * 1994) - 1334.4366) # 11 days
+round((0.6749 * 2022) - 1334.4366) # 30 days
+plot(cooks.distance(test))
+abline(h = 4/NROW(central_sum), col="red") # https://stats.stackexchange.com/questions/164099/removing-outliers-based-on-cooks-distance-in-r-language
 
 fig6H <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
   geom_smooth(method = "lm", formula = y~x, color = "black", size = 0.5, se = TRUE) +
@@ -1603,7 +1754,7 @@ fig6H <- ggplot(data = central_sum, aes(x = Year, y = TotalDuration)) +
   scale_x_continuous(breaks = seq(1994, 2022, 2)) +
   scale_y_continuous(breaks = seq(0, 65, 10),
                      limits = c(0,65)) +
-  labs(y = expression(atop("Central",
+  labs(y = expression(atop("Sediment - Central",
                            paste("Total HW Days"))),
        x = NULL) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
@@ -1757,7 +1908,7 @@ fig8_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp, y2 = thre
   scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
   scale_y_continuous(breaks = seq(17,31,2),
                      limits = c(17,31)) +
-  labs(y = expression(atop("Northern Edge",
+  labs(y = expression(atop("Edge",
                            paste("Sediment Temperature (  ", degree, "C)"))),
        x = NULL) +
   annotate("text", x = as.Date('2015-06-01'), y = 31, label = "(c", size = 6, hjust = 0) +
@@ -1868,7 +2019,7 @@ bb <- unique(hw_season$season)
 library(Kendall)
 library(trend)
 
-# Mann Kendall and sen's slope heatwave trend analysis
+# Mann Kendall and sen's slope heatwave trend analysis ----
 # Looking for temporal trends in HW avg. duration, avg. cuInt, and frequency
 # in water temperature, central, and northern sediment temperature
 for(i in 1:length(aa)){
@@ -2462,7 +2613,7 @@ plot(wt(wt_northern_sed_dat),
 axis(1, at = seq(265, 19993, by = 24*(365/12)), cex.axis = 1.5, col.axis = 'NA', tck = -0.02)
 axis(1, at = seq(265, 19993, by = 24*(365/12)*3), cex.axis = 1.5, labels = xx, col.axis = 'white', tck = -0.04)
 mtext("Sediment", side = 3, cex = 1.5, line = 0.1)
-text("Northern Edge", x = 20800, y = 7, srt = 270, cex = 1.5, xpd = NA)
+text("Edge", x = 20800, y = 7, srt = 270, cex = 1.5, xpd = NA)
 
 # bottom-left plot
 plot(wt(wt_central_water_dat),
