@@ -1943,6 +1943,15 @@ fig8_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp, y2 = thr
 # width = 600 height = 1300
 fig8_air + fig8_water + fig8_north + fig8_central + plot_layout(ncol = 1)
 
+# Total number of days above Zostera marina thermal stress level (28.6 oC) during June 2015 MHW
+test_water <- water_clim_cat[water_clim_cat$event == T,]
+test_northern <- northern_clim_cat[northern_clim_cat$event == T,]
+test_central <- central_clim_cat[central_clim_cat$event == T,]
+
+sum(test_water$Temp >= 28.6) # 10 days
+sum(test_northern$Temp >= 28.6) # 0 days
+sum(test_central$Temp >= 28.6) # 3 days
+
 # heatwave trend analyses
 
 # hw_air <- saveDat_Temp_air
