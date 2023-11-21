@@ -1,11 +1,8 @@
+library(tidyverse)
 library(data.table)
-library(dplyr)
-library(ggplot2)
 library(patchwork)
 library(ggpubr)
-library(lubridate)
 library(heatwaveR)
-library(tidyr)
 
 rm(list = ls())
 dev.off()
@@ -69,53 +66,55 @@ northern_lm <- lm(`5C_SED`~`5T_SED`, data = dat_hourly)
 # compare treatment (i.e., seagrass shoot removal sites) and
 # control (i.e., no seagrass shoot removal sites) sediment
 # temperature at central and northern locations
+summary(lm(`2C_SED` ~ `2T_SED`, data = dat_hourly))
+
 central_plot <-
   ggplot(data = dat_hourly, aes(x = `2T_SED`, y = `2C_SED`)) +
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.1) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
   scale_x_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
   scale_y_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
-  labs(x = expression(paste("Central Treatment Sed. Temp. ( ", degree, "C)")),
-       y = expression(paste("Central Control Sed. Temp. ( ", degree, "C)"))) +
+  labs(x = expression(atop(paste("Central Sediment Temperature (", degree, "C)"), 'Treatment')),
+       y = expression(atop(paste("Central Sediment Temperature (  ", degree, "C)"), 'Control'))) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.001,
            p.accuracy = 0.001,
-           label.x = 1, label.y = 35, size = 4) +
+           label.x = 1, label.y = 35, size = 5) +
   stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1, label.y = 33, size = 4) +
+                        label.x = 1, label.y = 33, size = 5) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
-        text = element_text(size = 16),
+  theme(text = element_text(size = 16),
         axis.text.x = element_text(size = 14, color = "black"),
         axis.text.y = element_text(size = 14, color = "black"))
+
+summary(lm(`5C_SED` ~ `5T_SED`, data = dat_hourly))
 
 northern_plot <-
   ggplot(data = dat_hourly, aes(x = `5T_SED`, y = `5C_SED`)) +
-  geom_point(alpha = 0.5) +
+  geom_point(alpha = 0.1) +
   stat_smooth(method = 'lm') +
   geom_abline(slope = 1, intercept = 0, linetype = "longdash", color = "red") +
   scale_x_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
   scale_y_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
-  labs(x = expression(paste("Northern Treatment Sed. Temp. ( ", degree, "C)")),
-       y = expression(paste("Northern Control Sed. Temp. ( ", degree, "C)"))) +
+  labs(x = expression(atop(paste("Edge Sediment Temperature (", degree, "C)"), 'Treatment')),
+       y = expression(atop(paste("Edge Sediment Temperature (  ", degree, "C)"), 'Control'))) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.001,
            p.accuracy = 0.001,
-           label.x = 1, label.y = 35, size = 4) +
+           label.x = 1, label.y = 35, size = 5) +
   stat_regline_equation(aes(label = ..eq.label..),
-                        label.x = 1, label.y = 33, size = 4) +
+                        label.x = 1, label.y = 33, size = 5) +
   theme_bw() +
-  theme(panel.grid = element_blank(),
-        text = element_text(size = 16),
+  theme(text = element_text(size = 16),
         axis.text.x = element_text(size = 14, color = "black"),
         axis.text.y = element_text(size = 14, color = "black"))
 
-### Exported as width = 900 height = 500
+### Exported as width = 1200 height = 600
 central_plot + northern_plot + plot_layout(ncol = 2)
 
 control_lm <- lm(`5C_SED`~`2C_SED`, data = dat_hourly)
@@ -307,7 +306,6 @@ Fig1a <- ggplot(data = dat_hourly) +
         axis.text.y = element_text(size = 16, color = "black"))
 
 # Difference in daily sediment temperature between central and northern locations
-# width = 1000 height = 700
 max(dat_daily$DeltaT_sedtemp, na.rm = T) # 4.1 C
 abs(min(dat_daily$DeltaT_sedtemp, na.rm = T)) # 1.1 C
 
@@ -409,7 +407,6 @@ Fig1b <- ggplot(data = dat_daily) +
 # width = 900 height = 1000
 Fig1a + Fig1b + plot_layout(ncol = 1)
 
-# Figure 2: Hourly water and sediment temperature (including difference) for both location ----
 central <- dat_hourly[,c(1,24,26,31)]
 northern <- dat_hourly[,c(1,25,27,30)]
 
@@ -458,7 +455,7 @@ northern <- northern %>%
 df1 <- rbind(central,northern)
 df1$Variable <- factor(df1$Variable, levels = c("Water","Sediment","Difference"))
 
-p1 <- df1 %>%
+SIFig1 <- df1 %>%
   subset(!Variable == "Difference") %>%
   mutate(var_water_sed = 
            if_else(Variable %in% c("Water", "Sediment"), 
@@ -531,7 +528,7 @@ p1 <- df1 %>%
            xmax = as.Date("2022-10-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
   theme_bw() +
-  theme(plot.margin = unit(c(0, 1, 2, 0), "lines"),
+  theme(plot.margin = unit(c(1, 1, 2, 0), "lines"),
         panel.grid = element_blank(),
         text = element_text(size = 16),
         axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
@@ -541,32 +538,26 @@ p1 <- df1 %>%
         legend.position = c(0.15,0.56),
         legend.background = element_blank(),
         legend.key = element_blank(),
-        strip.text = element_blank(),
-        strip.background = element_blank(),
+        strip.background = element_rect(fill = "gray90"),
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank(),
+        strip.text.y = element_text(size = 16),
         panel.border = element_blank()) +
   guides(fill = guide_legend(nrow = 2)) +
   coord_cartesian(clip = 'off', ylim = c(0,33)) +
   annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = as.Date("2020-10-15", "%Y-%m-%d"), y = -9.8, label = 2020, size = 6) +
-  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -9.8, label = 2021, size = 6) +
-  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -9.8, label = 2022, size = 6) +
+  annotate(geom = "text", x = as.Date("2020-10-15", "%Y-%m-%d"), y = -7, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -7, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -7, label = 2022, size = 6) +
   facet_grid(forcats::fct_rev(Location)~var_water_sed)
 
-dat_text1 <- data.frame(
-  label = c("(a","(b"),
-  Location = c('Edge','Central'),
-  x = c(as.Date("2022-08-15", "%Y-%m-%d"),
-        as.Date("2022-08-15", "%Y-%m-%d")),
-  y = c(3,3))
+# SI Figure 1
+# width = 900 height = 1000
+SIFig1
 
-p1 <- p1 + geom_text(
-  data    = dat_text1,
-  mapping = aes(x = x, y = y, label = label,
-                hjust   = 0,
-                vjust   = 1),
-  size = 5)
-
-p2 <- df1 %>%
+# Figure 2: Hourly water and sediment temperature (including difference) for both location ----
+# width = 900 height = 1000
+Fig2 <- df1 %>%
   mutate(var_water_sed = 
            if_else(Variable %in% c("Water", "Sediment"), 
                    true = "Water & Sediment", 
@@ -574,7 +565,7 @@ p2 <- df1 %>%
   subset(!var_water_sed == c('Water & Sediment'),) %>%
   ggplot() +
   geom_line(aes(x = Date, y = Temperature, group = Variable, color = Variable)) +
-  geom_hline(yintercept = 0, color = "red", linetype = 'longdash') +
+  geom_hline(yintercept = 0, color = "red", linetype = 'longdash', size = 1) +
   scale_color_manual(values = "black") +
   scale_x_date(date_breaks = "2 month",
                date_labels = "%b",
@@ -639,7 +630,7 @@ p2 <- df1 %>%
            xmax = as.Date("2022-10-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
   theme_bw() +
-  theme(plot.margin = unit(c(0, 1, 2, 0), "lines"),
+  theme(plot.margin = unit(c(1, 1, 2, 0), "lines"),
         panel.grid = element_blank(),
         text = element_text(size = 16),
         axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
@@ -652,21 +643,20 @@ p2 <- df1 %>%
   guides(fill = guide_legend(nrow = 2)) +
   coord_cartesian(clip = 'off', ylim = c(-4.5,4.1)) +
   annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = as.Date("2020-10-15", "%Y-%m-%d"), y = -7.05, label = 2020, size = 6) +
-  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -7.05, label = 2021, size = 6) +
-  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -7.05, label = 2022, size = 6) +
+  annotate(geom = "text", x = as.Date("2020-10-15", "%Y-%m-%d"), y = -6.25, label = 2020, size = 6) +
+  annotate(geom = "text", x = as.Date("2021-06-15", "%Y-%m-%d"), y = -6.25, label = 2021, size = 6) +
+  annotate(geom = "text", x = as.Date("2022-06-15", "%Y-%m-%d"), y = -6.25, label = 2022, size = 6) +
   facet_grid(forcats::fct_rev(Location)~var_water_sed)
 
 dat_text2 <- data.frame(
-  label = c("Positive = Water > Sediment", "Negative = Sediment > Water", "(c","(d"),
-  Location = c('Edge','Edge','Edge','Central'),
+  label = c("Positive = Water > Sediment",
+            "Negative = Sediment > Water"),
+  Location = c('Edge','Edge'),
   x = c(as.Date("2020-08-01", "%Y-%m-%d"),
-        as.Date("2020-08-01", "%Y-%m-%d"),
-        as.Date("2020-08-01", "%Y-%m-%d"),
         as.Date("2020-08-01", "%Y-%m-%d")),
-  y = c(4.2,3.5,-3.7,-3.7))
+  y = c(4.2,3.5))
 
-p2 <- p2 + geom_text(
+Fig2 <- Fig2 + geom_text(
   data    = dat_text2,
   mapping = aes(x = x, y = y, label = label,
                 hjust   = 0,
@@ -674,8 +664,7 @@ p2 <- p2 + geom_text(
                 size = 10),
   size = 5)
 
-# width = 1000 height = 700
-p1 + p2 + plot_layout(ncol = 2)
+Fig2
 
 # how much hourly sediment temperature is missing?
 round(sum(is.na(dat_hourly$central_sedtemp))/NROW(dat_hourly),2)*100 # 2%
@@ -1388,8 +1377,6 @@ saveCat_Temp %>%
         legend.text = element_text(size = 16),
         legend.background = element_blank())
 
-library(tidyverse)
-
 saveCat_Temp %>%
   mutate(Month = month(peak_date),
          Season = ifelse(Month >=12, "Winter",
@@ -1870,6 +1857,14 @@ fig8_air <- ggplot(data = air_clim_cat, aes(x = date, y = Temp, y2 = thresh)) +
            x = as.Date("2015-06-23", "%Y-%m-%d"),
            y = 17,
            hjust = 0) +
+  annotate("segment", color = "blueviolet", size = 1, linetype = 'solid',
+           x = as.Date("2015-06-18", "%Y-%m-%d"),
+           xend = as.Date("2015-06-22", "%Y-%m-%d"),
+           y = 15.5, yend = 15.5) +
+  annotate("text", color = "black", label = "Seagrass Threshold", size = 5,
+           x = as.Date("2015-06-23", "%Y-%m-%d"),
+           y = 15.5,
+           hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         text = element_text(size = 16),
@@ -1882,6 +1877,7 @@ fig8_water <- ggplot(data = water_clim_cat, aes(x = date, y = Temp, y2 = thresh)
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
+  geom_hline(yintercept = 28.6, size = 1, color = 'blueviolet', linetype = 'solid') +
   geom_point(aes(y = Temp, col = "Temperature"), size = 3, color = "black") +
   scale_fill_manual(name = NULL, values = fillColCat, guide = 'none') +
   scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
@@ -1903,6 +1899,7 @@ fig8_north <- ggplot(data = northern_clim_cat, aes(x = date, y = Temp, y2 = thre
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
+  geom_hline(yintercept = 28.6, size = 1, color = 'blueviolet', linetype = 'solid') +
   geom_point(aes(y = Temp, col = "Temperature"), size = 3, color = "black") +
   scale_fill_manual(name = NULL, values = fillColCat, guide = 'none') +
   scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
@@ -1924,6 +1921,7 @@ fig8_central <- ggplot(data = central_clim_cat, aes(x = date, y = Temp, y2 = thr
   geom_line(aes(y = seas, col = "Climatology"), size = 1, color = "gray80", linetype = 'solid') +
   geom_line(aes(y = thresh, col = "Threshold"), size = 1, color = "red", linetype = 'longdash') +
   geom_line(aes(y = Temp, col = "Temperature"), size = 1, color = "black", linetype = 'solid') +
+  geom_hline(yintercept = 28.6, size = 1, color = 'blueviolet', linetype = 'solid') +
   geom_point(aes(y = Temp, col = "Temperature"), size = 3, color = "black") +
   scale_fill_manual(name = NULL, values = fillColCat, guide = 'none') +
   scale_x_date(date_breaks = "1 week", date_labels = "%b %d") +
